@@ -524,8 +524,12 @@ async function exchangeMcpCodeForTokens(
  * Performs metadata discovery, PKCE generation, optional client registration,
  * and auth URL construction. The caller provides callbackPort; this function
  * builds the provider-specific redirectUri from it.
+ *
+ * @param preconfiguredClientId - If provided, skip dynamic registration entirely.
+ *   Use this for MCP servers that don't support RFC 7591 dynamic registration
+ *   (e.g. Figma MCP returns 403). The client_id must be pre-registered with the provider.
  */
-export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number): Promise<PreparedOAuthFlow> {
+export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, preconfiguredClientId?: string): Promise<PreparedOAuthFlow> {
   const metadata = await discoverOAuthMetadata(mcpUrl);
   if (!metadata) {
     throw new Error(`No OAuth metadata found for ${mcpUrl}`);
@@ -536,9 +540,19 @@ export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number): Pro
   const redirectUri = `http://localhost:${callbackPort}${CALLBACK_PATH}`;
 
   let clientId: string;
-  if (metadata.registration_endpoint) {
-    const client = await registerMcpOAuthClient(metadata.registration_endpoint, redirectUri);
-    clientId = client.client_id;
+  if (preconfiguredClientId) {
+    // Caller supplied a pre-registered client_id — skip dynamic registration
+    clientId = preconfiguredClientId;
+  } else if (metadata.registration_endpoint) {
+    try {
+      const client = await registerMcpOAuthClient(metadata.registration_endpoint, redirectUri);
+      clientId = client.client_id;
+    } catch {
+      // Dynamic registration failed (e.g. server returns 403 Forbidden).
+      // Fall back to 'craft-agent' so the OAuth flow can still proceed.
+      // Servers that reject registration may still accept a well-known public client_id.
+      clientId = 'craft-agent';
+    }
   } else {
     clientId = 'craft-agent';
   }
