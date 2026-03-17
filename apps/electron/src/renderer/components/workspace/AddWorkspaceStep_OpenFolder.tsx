@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "../ui/input"
 import { AddWorkspaceContainer, AddWorkspaceStepHeader, AddWorkspaceSecondaryButton, AddWorkspacePrimaryButton } from "./primitives"
+import { useIsRemote } from "@/hooks/useIsRemote"
 
 interface AddWorkspaceStep_OpenFolderProps {
   onBack: () => void
@@ -20,13 +21,21 @@ export function AddWorkspaceStep_OpenFolder({
 }: AddWorkspaceStep_OpenFolderProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [workspaceName, setWorkspaceName] = useState('')
+  const isRemote = useIsRemote()
 
   const handleBrowse = useCallback(async () => {
     const path = await window.electronAPI.openFolderDialog()
     if (path) {
       setSelectedPath(path)
-      // Extract folder name for workspace name
       const folderName = path.split(/[\\/]/).pop() || path
+      setWorkspaceName(folderName)
+    }
+  }, [])
+
+  const handlePathInput = useCallback((value: string) => {
+    setSelectedPath(value || null)
+    if (value) {
+      const folderName = value.split(/[\\/]/).pop() || value
       setWorkspaceName(folderName)
     }
   }, [])
@@ -61,26 +70,37 @@ export function AddWorkspaceStep_OpenFolder({
 
       <div className="mt-6 w-full space-y-6">
         {/* Browse folder row */}
-        <div
-          className={cn(
-            "flex items-center justify-between gap-4 p-4 rounded-xl",
-            "border border-border/50 bg-background"
-          )}
-        >
-          <div className="flex-1 min-w-0">
-            {selectedPath ? (
-              <p className="text-sm text-foreground truncate">{selectedPath}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No folder selected</p>
-            )}
-          </div>
-          <AddWorkspaceSecondaryButton
-            onClick={handleBrowse}
+        {isRemote ? (
+          <Input
+            value={selectedPath ?? ''}
+            onChange={(e) => handlePathInput(e.target.value)}
+            placeholder="/home/user/my-project"
             disabled={isCreating}
+            autoFocus
+            className="bg-background shadow-minimal"
+          />
+        ) : (
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4 p-4 rounded-xl",
+              "border border-border/50 bg-background"
+            )}
           >
-            Browse
-          </AddWorkspaceSecondaryButton>
-        </div>
+            <div className="flex-1 min-w-0">
+              {selectedPath ? (
+                <p className="text-sm text-foreground truncate">{selectedPath}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">No folder selected</p>
+              )}
+            </div>
+            <AddWorkspaceSecondaryButton
+              onClick={handleBrowse}
+              disabled={isCreating}
+            >
+              Browse
+            </AddWorkspaceSecondaryButton>
+          </div>
+        )}
 
         {/* Workspace name input - shown after folder is selected */}
         {selectedPath && (

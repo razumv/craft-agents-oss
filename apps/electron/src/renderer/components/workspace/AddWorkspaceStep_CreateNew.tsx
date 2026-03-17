@@ -6,6 +6,7 @@ import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { AddWorkspaceContainer, AddWorkspaceStepHeader, AddWorkspaceSecondaryButton, AddWorkspacePrimaryButton } from "./primitives"
 import { AddWorkspace_RadioOption } from "./AddWorkspace_RadioOption"
+import { useIsRemote } from "@/hooks/useIsRemote"
 
 type LocationOption = 'default' | 'custom'
 
@@ -33,6 +34,7 @@ export function AddWorkspaceStep_CreateNew({
   const [homeDir, setHomeDir] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isValidating, setIsValidating] = useState(false)
+  const isRemote = useIsRemote()
 
   // Get home directory on mount
   useEffect(() => {
@@ -154,17 +156,27 @@ export function AddWorkspaceStep_CreateNew({
             onChange={() => setLocationOption('custom')}
             disabled={isCreating}
             title="Choose a location"
-            subtitle={customPath || "Pick a place to put your new workspace."}
+            subtitle={(!isRemote && customPath) ? customPath : isRemote ? "Enter server path" : "Pick a place to put your new workspace."}
             action={locationOption === 'custom' ? (
-              <AddWorkspaceSecondaryButton
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleBrowse()
-                }}
-                disabled={isCreating}
-              >
-                Browse
-              </AddWorkspaceSecondaryButton>
+              isRemote ? (
+                <Input
+                  value={customPath ?? ''}
+                  onChange={(e) => setCustomPath(e.target.value || null)}
+                  placeholder="/home/user/projects"
+                  disabled={isCreating}
+                  className="w-48 h-7 text-sm bg-background shadow-minimal"
+                />
+              ) : (
+                <AddWorkspaceSecondaryButton
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleBrowse()
+                  }}
+                  disabled={isCreating}
+                >
+                  Browse
+                </AddWorkspaceSecondaryButton>
+              )
             ) : undefined}
           />
         </div>

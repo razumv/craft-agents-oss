@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import * as storage from '@/lib/local-storage'
 import { useAppShellContext } from '@/context/AppShellContext'
 import { getFileManagerName } from '@/lib/platform'
+import { useIsRemote } from '@/hooks/useIsRemote'
 
 /**
  * Stagger animation variants for child items - matches LeftSidebar pattern
@@ -486,31 +487,35 @@ export function SessionFilesSection({ sessionId, className, sessionFolderPath, h
   // instead of always opening in the file manager / default app.
   const { onOpenFile } = useAppShellContext()
   const fileManagerName = getFileManagerName()
+  const isRemote = useIsRemote()
 
   // Reveal a file/folder in the system file manager
   const handleRevealInFileManager = useCallback((path: string) => {
-    window.electronAPI.showInFolder(path)
-  }, [])
+    if (!isRemote) window.electronAPI.showInFolder(path)
+  }, [isRemote])
 
   // Handle file click — preview in-app if possible, open directory in file manager
   const handleFileClick = useCallback((file: SessionFile) => {
     if (file.type === 'directory') {
-      // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
-      window.electronAPI.openFile(file.path)
+      if (!isRemote) {
+        // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
+        window.electronAPI.openFile(file.path)
+      }
     } else {
       onOpenFile(file.path)
     }
-  }, [onOpenFile])
+  }, [isRemote, onOpenFile])
 
-  // Handle double-click — same as single click (interceptor decides preview vs external)
   const handleFileDoubleClick = useCallback((file: SessionFile) => {
     if (file.type === 'directory') {
-      // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
-      window.electronAPI.openFile(file.path)
+      if (!isRemote) {
+        // eslint-disable-next-line craft-links/no-direct-file-open -- directories can't be previewed in-app
+        window.electronAPI.openFile(file.path)
+      }
     } else {
       onOpenFile(file.path)
     }
-  }, [onOpenFile])
+  }, [isRemote, onOpenFile])
 
   // Toggle folder expanded state
   const handleToggleExpand = useCallback((path: string) => {
@@ -536,7 +541,7 @@ export function SessionFilesSection({ sessionId, className, sessionFolderPath, h
       {!hideHeader && (
         <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0 select-none">
           <span className="text-xs font-medium text-muted-foreground">Session Files</span>
-          {sessionFolderPath && (
+          {sessionFolderPath && !isRemote && (
             <button
               type="button"
               onClick={() => window.electronAPI.showInFolder(sessionFolderPath)}

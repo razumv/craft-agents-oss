@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useMenuComponents } from '@/components/ui/menu-context'
 import { getFileManagerName } from '@/lib/platform'
+import { useIsRemote } from '@/hooks/useIsRemote'
 
 export interface SourceMenuProps {
   /** Source slug */
@@ -47,6 +48,7 @@ export function SourceMenu({
 }: SourceMenuProps) {
   // Get menu components from context (works with both DropdownMenu and ContextMenu)
   const { MenuItem, Separator } = useMenuComponents()
+  const isRemote = useIsRemote()
 
   return (
     <>
@@ -56,11 +58,13 @@ export function SourceMenu({
         <span className="flex-1">Open in New Window</span>
       </MenuItem>
 
-      {/* Show in file manager */}
-      <MenuItem onClick={onShowInFinder}>
-        <FolderOpen className="h-3.5 w-3.5" />
-        <span className="flex-1">{`Show in ${getFileManagerName()}`}</span>
-      </MenuItem>
+      {/* Show in file manager — hidden in remote mode (server path, not local) */}
+      {!isRemote && (
+        <MenuItem onClick={onShowInFinder}>
+          <FolderOpen className="h-3.5 w-3.5" />
+          <span className="flex-1">{`Show in ${getFileManagerName()}`}</span>
+        </MenuItem>
+      )}
 
       <Separator />
 

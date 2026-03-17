@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { PanelHeader } from '@/components/app-shell/PanelHeader'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -26,6 +26,7 @@ import type { PermissionMode, WorkspaceSettings, LoadedSource } from '../../../s
 import { PERMISSION_MODE_CONFIG } from '@craft-agent/shared/agent/mode-types'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
 import { SourceAvatar } from '@/components/ui/source-avatar'
+import { useIsRemote } from '@/hooks/useIsRemote'
 
 import {
   SettingsSection,
@@ -34,6 +35,7 @@ import {
   SettingsToggle,
   SettingsMenuSelectRow,
 } from '@/components/settings'
+import { Input } from '@/components/ui/input'
 
 export const meta: DetailsPageMeta = {
   navigator: 'settings',
@@ -58,6 +60,9 @@ export default function WorkspaceSettingsPage() {
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask')
   const [workingDirectory, setWorkingDirectory] = useState('')
+  const [editingWorkingDir, setEditingWorkingDir] = useState(false)
+  const [workingDirInput, setWorkingDirInput] = useState('')
+  const isRemote = useIsRemote()
   const [localMcpEnabled, setLocalMcpEnabled] = useState(true)
   const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(true)
 
@@ -241,6 +246,12 @@ export default function WorkspaceSettingsPage() {
   const handleChangeWorkingDirectory = useCallback(async () => {
     if (!window.electronAPI) return
 
+    if (isRemote) {
+      setWorkingDirInput(workingDirectory)
+      setEditingWorkingDir(true)
+      return
+    }
+
     try {
       const selectedPath = await window.electronAPI.openFolderDialog()
       if (selectedPath) {
@@ -250,7 +261,16 @@ export default function WorkspaceSettingsPage() {
     } catch (error) {
       console.error('Failed to change working directory:', error)
     }
-  }, [updateWorkspaceSetting])
+  }, [isRemote, workingDirectory, updateWorkspaceSetting])
+
+  const handleSaveWorkingDir = useCallback(async () => {
+    const path = workingDirInput.trim()
+    if (path) {
+      setWorkingDirectory(path)
+      await updateWorkspaceSetting('workingDirectory', path)
+    }
+    setEditingWorkingDir(false)
+  }, [workingDirInput, updateWorkspaceSetting])
 
   const handleClearWorkingDirectory = useCallback(async () => {
     if (!window.electronAPI) return
@@ -500,30 +520,66 @@ export default function WorkspaceSettingsPage() {
             {/* Advanced */}
             <SettingsSection title="Advanced">
               <SettingsCard>
-                <SettingsRow
-                  label="Default Working Directory"
-                  description={workingDirectory || 'Not set (uses session folder)'}
-                  action={
-                    <div className="flex items-center gap-2">
-                      {workingDirectory && (
+                {editingWorkingDir ? (
+                  <SettingsRow
+                    label="Default Working Directory"
+                    description="Enter server path"
+                    action={
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={workingDirInput}
+                          onChange={(e) => setWorkingDirInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveWorkingDir()
+                            if (e.key === 'Escape') setEditingWorkingDir(false)
+                          }}
+                          placeholder="/home/user/projects"
+                          autoFocus
+                          className="h-8 w-56 text-sm bg-background shadow-minimal"
+                        />
                         <button
                           type="button"
-                          onClick={handleClearWorkingDirectory}
-                          className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors text-foreground/60 hover:text-foreground"
+                          onClick={handleSaveWorkingDir}
+                          className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors"
                         >
-                          Clear
+                          Save
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleChangeWorkingDirectory}
-                        className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors"
-                      >
-                        Change...
-                      </button>
-                    </div>
-                  }
-                />
+                        <button
+                          type="button"
+                          onClick={() => setEditingWorkingDir(false)}
+                          className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors text-foreground/60"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    }
+                  />
+                ) : (
+                  <SettingsRow
+                    label="Default Working Directory"
+                    description={workingDirectory || 'Not set (uses session folder)'}
+                    action={
+                      <div className="flex items-center gap-2">
+                        {workingDirectory && (
+                          <button
+                            type="button"
+                            onClick={handleClearWorkingDirectory}
+                            className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors text-foreground/60 hover:text-foreground"
+                          >
+                            Clear
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleChangeWorkingDirectory}
+                          className="inline-flex items-center h-8 px-3 text-sm rounded-lg bg-background shadow-minimal hover:bg-foreground/[0.02] transition-colors"
+                        >
+                          Change...
+                        </button>
+                      </div>
+                    }
+                  />
+                )}
                 <SettingsToggle
                   label="Local MCP Servers"
                   description="Enable stdio subprocess servers"
