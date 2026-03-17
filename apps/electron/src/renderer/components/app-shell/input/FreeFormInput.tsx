@@ -525,10 +525,18 @@ export function FreeFormInput({
   const transcribeAndInsert = React.useCallback(async (blob: Blob) => {
     setIsTranscribing(true)
     try {
-      const arrayBuffer = await blob.arrayBuffer()
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-      )
+      // Convert blob to base64 via FileReader (reliable for large binary)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string
+          // Strip "data:audio/webm;base64," prefix
+          const comma = dataUrl.indexOf(',')
+          resolve(dataUrl.slice(comma + 1))
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
       const text = await window.electronAPI.transcribeAudio(base64)
       if (text) {
         // Append transcribed text to existing input (with space separator)
@@ -583,7 +591,7 @@ export function FreeFormInput({
         }
       }
 
-      recorder.start()
+      recorder.start(250) // Collect data every 250ms for reliable capture
       mediaRecorderRef.current = recorder
       recordingStartTimeRef.current = Date.now()
       setIsRecording(true)
