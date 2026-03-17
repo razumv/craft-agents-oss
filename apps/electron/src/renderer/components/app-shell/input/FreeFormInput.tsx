@@ -659,35 +659,12 @@ export function FreeFormInput({
     }
   }, [isRecording, recordingDuration, stopRecording])
 
-  // Mic button handlers (press-and-hold)
-  const handleMicMouseDown = React.useCallback(async () => {
-    if (isRecording) return
-    // Check for API key first
-    try {
-      const key = await window.electronAPI.getGroqApiKey()
-      if (!key) {
-        toast.error('Groq API key not configured. Set it in Settings → Input.')
-        return
-      }
-    } catch {
-      toast.error('Failed to check API key')
-      return
-    }
-    startRecording()
-  }, [isRecording, startRecording])
-
-  const handleMicMouseUp = React.useCallback(() => {
-    if (isRecording) {
-      stopRecording()
-    }
-  }, [isRecording, stopRecording])
-
-  // Toggle recording (for keyboard shortcut)
+  // Toggle recording (click to start, click again to stop)
   const toggleRecording = React.useCallback(async () => {
     if (isRecording) {
       stopRecording()
     } else {
-      // Check for API key
+      // Check for API key first
       try {
         const key = await window.electronAPI.getGroqApiKey()
         if (!key) {
@@ -2224,15 +2201,13 @@ Model
                 <Button
                   type="button"
                   size="icon"
-                  variant="ghost"
+                  variant={isRecording ? 'destructive' : 'secondary'}
                   className={cn(
                     'h-7 w-7 rounded-full shrink-0 ml-1',
-                    isRecording && 'bg-red-500/20 text-red-500 animate-pulse',
+                    isRecording && 'animate-pulse',
                     isTranscribing && 'opacity-50 pointer-events-none',
                   )}
-                  onMouseDown={(e) => { e.preventDefault(); handleMicMouseDown() }}
-                  onMouseUp={handleMicMouseUp}
-                  onMouseLeave={handleMicMouseUp}
+                  onClick={toggleRecording}
                   disabled={disabled || isTranscribing}
                 >
                   {isTranscribing ? (
@@ -2244,10 +2219,10 @@ Model
               </TooltipTrigger>
               <TooltipContent side="top">
                 {isRecording
-                  ? `Recording... ${recordingDuration}s — release to transcribe`
+                  ? `Recording... ${recordingDuration}s — click to stop`
                   : isTranscribing
                     ? 'Transcribing...'
-                    : `Hold to record voice (${isMac ? '⌘' : 'Ctrl'}+Shift+V to toggle)`
+                    : `Record voice (${isMac ? '⌘' : 'Ctrl'}+Shift+V)`
                 }
               </TooltipContent>
             </Tooltip>
