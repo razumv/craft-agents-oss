@@ -523,6 +523,7 @@ export function FreeFormInput({
 
   // Voice recording: transcribe audio and insert text
   const transcribeAndInsert = React.useCallback(async (blob: Blob) => {
+    console.log(`[voice] transcribeAndInsert called, blob size: ${blob.size} bytes, type: ${blob.type}`)
     setIsTranscribing(true)
     try {
       // Convert blob to base64 via FileReader (reliable for large binary)
@@ -532,12 +533,17 @@ export function FreeFormInput({
           const dataUrl = reader.result as string
           // Strip "data:audio/webm;base64," prefix
           const comma = dataUrl.indexOf(',')
-          resolve(dataUrl.slice(comma + 1))
+          const b64 = dataUrl.slice(comma + 1)
+          console.log(`[voice] Base64 length: ${b64.length} chars (dataUrl prefix: "${dataUrl.slice(0, 40)}...")`)
+          resolve(b64)
         }
         reader.onerror = reject
         reader.readAsDataURL(blob)
       })
+      console.log(`[voice] Sending to transcription API...`)
       const text = await window.electronAPI.transcribeAudio(base64)
+      console.log(`[voice] Transcription result: "${text}"`)
+
       if (text) {
         // Append transcribed text to existing input (with space separator)
         setInput(prev => {
@@ -571,27 +577,46 @@ export function FreeFormInput({
   const startRecording = React.useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
+
+      // Diagnose stream
+      const tracks = stream.getAudioTracks()
+      console.log('[voice] Audio tracks:', tracks.length)
+      tracks.forEach((t, i) => {
+        console.log(`[voice] Track ${i}: label=${t.label}, enabled=${t.enabled}, muted=${t.muted}, readyState=${t.readyState}`)
+        const settings = t.getSettings()
+        console.log(`[voice] Track ${i} settings:`, JSON.stringify(settings))
       })
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm'
+      console.log('[voice] Using mimeType:', mimeType)
+
+      const recorder = new MediaRecorder(stream, { mimeType })
       audioChunksRef.current = []
 
       recorder.ondataavailable = (e) => {
+        console.log(`[voice] Chunk received: ${e.data.size} bytes`)
         if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const totalSize = audioChunksRef.current.reduce((sum, c) => sum + c.size, 0)
+        console.log(`[voice] Recording stopped. Chunks: ${audioChunksRef.current.length}, total size: ${totalSize} bytes`)
+        const blob = new Blob(audioChunksRef.current, { type: mimeType })
+        console.log(`[voice] Final blob size: ${blob.size} bytes`)
         // Ignore very short recordings (< 0.5s = accidental click)
         const duration = Date.now() - recordingStartTimeRef.current
+        console.log(`[voice] Recording duration: ${duration}ms`)
         if (duration >= 500) {
           transcribeAndInsert(blob)
+        } else {
+          console.log('[voice] Recording too short, skipping')
         }
       }
 
       recorder.start(250) // Collect data every 250ms for reliable capture
+      console.log('[voice] Recording started')
       mediaRecorderRef.current = recorder
       recordingStartTimeRef.current = Date.now()
       setIsRecording(true)
