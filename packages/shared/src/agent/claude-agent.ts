@@ -1511,7 +1511,15 @@ This is a branched conversation. All prior messages in this conversation are par
         console.error(`[ClaudeAgent] INNER CATCH triggered: ${sdkError instanceof Error ? sdkError.message : String(sdkError)}`);
 
         // Handle user interruption
-        if (sdkError instanceof AbortError) {
+        // Also catch DOMException/Error with name/message "AbortError"/"Operation aborted"
+        // which Bun throws when AbortController.abort() kills the SDK subprocess pipe.
+        const isAbortError =
+          sdkError instanceof AbortError ||
+          (sdkError instanceof Error && (
+            sdkError.name === 'AbortError' ||
+            sdkError.message === 'Operation aborted'
+          ));
+        if (isAbortError) {
           const reason = this.lastAbortReason;
           this.lastAbortReason = null;  // Clear for next time
 
