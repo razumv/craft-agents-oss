@@ -576,7 +576,13 @@ export function FreeFormInput({
 
   const startRecording = React.useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      })
 
       // Diagnose stream
       const tracks = stream.getAudioTracks()
