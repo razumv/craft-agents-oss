@@ -85,6 +85,7 @@ mac:
   # The value must match --app-icon used in actool (see afterPack.js)
   extendInfo:
     CFBundleIconName: AppIcon
+    NSMicrophoneUsageDescription: "Craft Agents needs microphone access for voice message transcription."
   target:
     - target: dmg
       arch:

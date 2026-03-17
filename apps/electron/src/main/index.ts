@@ -3,7 +3,7 @@
 import { loadShellEnv } from './shell-env'
 loadShellEnv()
 
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, shell, systemPreferences } from 'electron'
 import { createHash, randomUUID } from 'crypto'
 import { hostname, homedir } from 'os'
 import * as Sentry from '@sentry/electron/main'
@@ -379,6 +379,17 @@ app.whenReady().then(async () => {
 
   // Seed preset themes to ~/.craft-agent/themes/ (copies bundled theme JSONs on first run)
   ensurePresetThemes()
+
+  // Request microphone access on macOS (required for voice message transcription).
+  // Without this + NSMicrophoneUsageDescription, macOS silently returns empty audio streams.
+  if (process.platform === 'darwin') {
+    const micStatus = systemPreferences.getMediaAccessStatus('microphone')
+    if (micStatus !== 'granted') {
+      systemPreferences.askForMediaAccess('microphone').then(granted => {
+        if (!granted) console.warn('[main] Microphone access denied by user')
+      })
+    }
+  }
 
   // Register thumbnail:// protocol handler (scheme was registered earlier, before app.whenReady)
   registerThumbnailHandler()
