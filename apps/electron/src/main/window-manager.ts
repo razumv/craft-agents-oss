@@ -1,4 +1,4 @@
-import { BrowserWindow, shell, nativeTheme, Menu, app } from 'electron'
+import { BrowserWindow, shell, nativeTheme, Menu, app, session } from 'electron'
 import { windowLog } from './logger'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -168,6 +168,17 @@ export class WindowManager {
         nodeIntegration: false,
         sandbox: false,
         webviewTag: false // Browser integration uses WebContentsView, not <webview>
+      }
+    })
+
+    // Allow microphone access in the renderer (required for voice message recording).
+    // Without this, Electron may silently block getUserMedia or return empty audio.
+    window.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
+      if (permission === 'media') {
+        console.log('[window] Granting media permission request')
+        callback(true)
+      } else {
+        callback(true) // Allow other permissions too (clipboard, notifications, etc.)
       }
     })
 

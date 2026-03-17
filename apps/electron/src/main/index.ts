@@ -384,10 +384,10 @@ app.whenReady().then(async () => {
   // Without this + NSMicrophoneUsageDescription, macOS silently returns empty audio streams.
   if (process.platform === 'darwin') {
     const micStatus = systemPreferences.getMediaAccessStatus('microphone')
+    console.log(`[main] Microphone access status: ${micStatus}`)
     if (micStatus !== 'granted') {
-      systemPreferences.askForMediaAccess('microphone').then(granted => {
-        if (!granted) console.warn('[main] Microphone access denied by user')
-      })
+      const granted = await systemPreferences.askForMediaAccess('microphone')
+      console.log(`[main] Microphone access ${granted ? 'granted' : 'denied'}`)
     }
   }
 
