@@ -30,6 +30,7 @@ export function registerVoiceHandlers(server: RpcServer, deps: HandlerDeps): voi
     const formData = new FormData()
     formData.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), 'recording.webm')
     formData.append('model', 'whisper-large-v3-turbo')
+    formData.append('language', 'ru')
     formData.append('response_format', 'text')
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
