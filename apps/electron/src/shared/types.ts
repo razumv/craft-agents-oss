@@ -469,6 +469,11 @@ export interface ElectronAPI {
   getSpellCheck(): Promise<boolean>
   setSpellCheck(enabled: boolean): Promise<void>
 
+  // Voice messages (Groq Whisper transcription)
+  getGroqApiKey(): Promise<string | undefined>
+  setGroqApiKey(apiKey: string): Promise<void>
+  transcribeAudio(audioBase64: string): Promise<string>
+
   // Power settings
   getKeepAwakeWhileRunning(): Promise<boolean>
   setKeepAwakeWhileRunning(enabled: boolean): Promise<void>

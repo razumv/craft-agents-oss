@@ -252,6 +252,11 @@ export const CHANNEL_MAP = {
   getNotificationsEnabled: invoke(RPC_CHANNELS.notification.GET_ENABLED),
   setNotificationsEnabled: invoke(RPC_CHANNELS.notification.SET_ENABLED),
 
+  // Voice messages
+  getGroqApiKey: invoke(RPC_CHANNELS.voice.GET_GROQ_API_KEY),
+  setGroqApiKey: invoke(RPC_CHANNELS.voice.SET_GROQ_API_KEY),
+  transcribeAudio: invoke(RPC_CHANNELS.voice.TRANSCRIBE_AUDIO),
+
   // Input settings
   getAutoCapitalisation: invoke(RPC_CHANNELS.input.GET_AUTO_CAPITALISATION),
   setAutoCapitalisation: invoke(RPC_CHANNELS.input.SET_AUTO_CAPITALISATION),

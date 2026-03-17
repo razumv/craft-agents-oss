@@ -73,6 +73,8 @@ export interface StoredConfig {
   networkProxy?: import('./types.ts').NetworkProxySettings;
   // Windows: path to Git Bash (bash.exe) for the SDK subprocess
   gitBashPath?: string;
+  // Voice messages — Groq Whisper API key for audio transcription
+  groqApiKey?: string;
 }
 
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
@@ -2385,6 +2387,32 @@ export function setNetworkProxySettings(settings: NetworkProxySettings): void {
     config.networkProxy = normalized;
   }
 
+  saveConfig(config);
+}
+
+// ============================================
+// Voice Messages (Groq Whisper API)
+// ============================================
+
+/**
+ * Get the stored Groq API key for voice transcription.
+ */
+export function getGroqApiKey(): string | undefined {
+  const config = loadStoredConfig();
+  return config?.groqApiKey;
+}
+
+/**
+ * Set the Groq API key for voice transcription.
+ */
+export function setGroqApiKey(apiKey: string): void {
+  const config = loadStoredConfig();
+  if (!config) return;
+  if (apiKey.trim() === '') {
+    delete config.groqApiKey;
+  } else {
+    config.groqApiKey = apiKey.trim();
+  }
   saveConfig(config);
 }
 

@@ -316,6 +316,11 @@ export const RPC_CHANNELS = {
     REMOVED: 'browser-pane:removed',
     INTERACTED: 'browser-pane:interacted',
   },
+  voice: {
+    GET_GROQ_API_KEY: 'voice:getGroqApiKey',
+    SET_GROQ_API_KEY: 'voice:setGroqApiKey',
+    TRANSCRIBE_AUDIO: 'voice:transcribeAudio',
+  },
   automations: {
     TEST: 'automations:test',
     SET_ENABLED: 'automations:setEnabled',

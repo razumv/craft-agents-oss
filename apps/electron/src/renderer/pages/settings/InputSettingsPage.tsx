@@ -22,6 +22,7 @@ import {
   SettingsCard,
   SettingsToggle,
   SettingsMenuSelectRow,
+  SettingsSecretInput,
 } from '@/components/settings'
 
 export const meta: DetailsPageMeta = {
@@ -43,19 +44,24 @@ export default function InputSettingsPage() {
   // Send message key state
   const [sendMessageKey, setSendMessageKey] = useState<'enter' | 'cmd-enter'>('enter')
 
+  // Groq API key state
+  const [groqApiKey, setGroqApiKey] = useState('')
+
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
       if (!window.electronAPI) return
       try {
-        const [autoCapEnabled, spellCheckEnabled, sendKey] = await Promise.all([
+        const [autoCapEnabled, spellCheckEnabled, sendKey, groqKey] = await Promise.all([
           window.electronAPI.getAutoCapitalisation(),
           window.electronAPI.getSpellCheck(),
           window.electronAPI.getSendMessageKey(),
+          window.electronAPI.getGroqApiKey(),
         ])
         setAutoCapitalisation(autoCapEnabled)
         setSpellCheck(spellCheckEnabled)
         setSendMessageKey(sendKey)
+        if (groqKey) setGroqApiKey(groqKey)
       } catch (error) {
         console.error('Failed to load input settings:', error)
       }
@@ -79,6 +85,14 @@ export default function InputSettingsPage() {
     window.electronAPI.setSendMessageKey(key)
   }, [])
 
+  const handleGroqApiKeyChange = useCallback((value: string) => {
+    setGroqApiKey(value)
+  }, [])
+
+  const handleGroqApiKeyBlur = useCallback(async () => {
+    await window.electronAPI.setGroqApiKey(groqApiKey)
+  }, [groqApiKey])
+
   return (
     <div className="h-full flex flex-col">
       <PanelHeader title="Input" actions={<HeaderMenu route={routes.view.settings('input')} />} />
@@ -100,6 +114,21 @@ export default function InputSettingsPage() {
                     description="Underline misspelled words while typing."
                     checked={spellCheck}
                     onCheckedChange={handleSpellCheckChange}
+                  />
+                </SettingsCard>
+              </SettingsSection>
+
+              {/* Voice Messages */}
+              <SettingsSection title="Voice Messages" description="Record voice messages and transcribe them to text using Groq Whisper API.">
+                <SettingsCard>
+                  <SettingsSecretInput
+                    label="Groq API Key"
+                    description="API key from console.groq.com for audio transcription."
+                    value={groqApiKey}
+                    onChange={handleGroqApiKeyChange}
+                    onBlur={handleGroqApiKeyBlur}
+                    placeholder="gsk_..."
+                    inCard
                   />
                 </SettingsCard>
               </SettingsSection>

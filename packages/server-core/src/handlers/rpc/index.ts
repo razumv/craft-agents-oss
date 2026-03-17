@@ -15,6 +15,7 @@ import { registerSkillsHandlers } from './skills'
 import { registerSourcesHandlers } from './sources'
 import { registerStatusesHandlers } from './statuses'
 import { registerSystemCoreHandlers } from './system'
+import { registerVoiceHandlers } from './voice'
 import { registerWorkspaceCoreHandlers } from './workspace'
 
 export function registerCoreRpcHandlers(server: RpcServer, deps: HandlerDeps): void {
@@ -31,5 +32,6 @@ export function registerCoreRpcHandlers(server: RpcServer, deps: HandlerDeps): v
   registerSourcesHandlers(server, deps)
   registerStatusesHandlers(server, deps)
   registerSystemCoreHandlers(server, deps)
+  registerVoiceHandlers(server, deps)
   registerWorkspaceCoreHandlers(server, deps)
 }

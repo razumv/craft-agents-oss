@@ -11,6 +11,7 @@ import {
   ChevronDown,
   AlertCircle,
   X,
+  Mic,
 } from 'lucide-react'
 import { Icon_Home, Icon_Folder, Spinner } from '@craft-agent/ui'
 
@@ -491,6 +492,15 @@ export function FreeFormInput({
   const [sendMessageKey, setSendMessageKey] = React.useState<'enter' | 'cmd-enter'>('enter')
   const [spellCheck, setSpellCheck] = React.useState(false)
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = React.useState(false)
+  const [isTranscribing, setIsTranscribing] = React.useState(false)
+  const [recordingDuration, setRecordingDuration] = React.useState(0)
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null)
+  const audioChunksRef = React.useRef<Blob[]>([])
+  const recordingTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
+  const recordingStartTimeRef = React.useRef<number>(0)
+
   // Load input settings on mount
   React.useEffect(() => {
     const loadInputSettings = async () => {
@@ -510,6 +520,160 @@ export function FreeFormInput({
     }
     loadInputSettings()
   }, [])
+
+  // Voice recording: transcribe audio and insert text
+  const transcribeAndInsert = React.useCallback(async (blob: Blob) => {
+    setIsTranscribing(true)
+    try {
+      const arrayBuffer = await blob.arrayBuffer()
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      )
+      const text = await window.electronAPI.transcribeAudio(base64)
+      if (text) {
+        // Append transcribed text to existing input (with space separator)
+        setInput(prev => {
+          const newValue = prev ? `${prev} ${text}` : text
+          syncToParent(newValue)
+          return newValue
+        })
+        // Focus the input
+        setTimeout(() => externalInputRef?.current?.focus(), 0)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Transcription failed'
+      toast.error(message)
+    } finally {
+      setIsTranscribing(false)
+    }
+  }, [syncToParent, externalInputRef])
+
+  const stopRecording = React.useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    setIsRecording(false)
+    setRecordingDuration(0)
+  }, [])
+
+  const startRecording = React.useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      })
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        // Ignore very short recordings (< 0.5s = accidental click)
+        const duration = Date.now() - recordingStartTimeRef.current
+        if (duration >= 500) {
+          transcribeAndInsert(blob)
+        }
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      recordingStartTimeRef.current = Date.now()
+      setIsRecording(true)
+
+      // Start duration timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(Math.floor((Date.now() - recordingStartTimeRef.current) / 1000))
+      }, 1000)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow microphone access in system settings.')
+      } else {
+        toast.error('Failed to start recording')
+      }
+    }
+  }, [transcribeAndInsert])
+
+  // Cleanup recording on unmount
+  React.useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop())
+        mediaRecorderRef.current.stop()
+      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    }
+  }, [])
+
+  // Auto-stop recording after 120 seconds
+  React.useEffect(() => {
+    if (isRecording && recordingDuration >= 120) {
+      stopRecording()
+      toast.info('Recording stopped — maximum duration reached (2 min)')
+    }
+  }, [isRecording, recordingDuration, stopRecording])
+
+  // Mic button handlers (press-and-hold)
+  const handleMicMouseDown = React.useCallback(async () => {
+    if (isRecording) return
+    // Check for API key first
+    try {
+      const key = await window.electronAPI.getGroqApiKey()
+      if (!key) {
+        toast.error('Groq API key not configured. Set it in Settings → Input.')
+        return
+      }
+    } catch {
+      toast.error('Failed to check API key')
+      return
+    }
+    startRecording()
+  }, [isRecording, startRecording])
+
+  const handleMicMouseUp = React.useCallback(() => {
+    if (isRecording) {
+      stopRecording()
+    }
+  }, [isRecording, stopRecording])
+
+  // Toggle recording (for keyboard shortcut)
+  const toggleRecording = React.useCallback(async () => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      // Check for API key
+      try {
+        const key = await window.electronAPI.getGroqApiKey()
+        if (!key) {
+          toast.error('Groq API key not configured. Set it in Settings → Input.')
+          return
+        }
+      } catch {
+        toast.error('Failed to check API key')
+        return
+      }
+      startRecording()
+    }
+  }, [isRecording, stopRecording, startRecording])
+
+  // Keyboard shortcut: Cmd/Ctrl+Shift+V to toggle voice recording
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'V' && e.shiftKey && (isMac ? e.metaKey : e.ctrlKey)) {
+        e.preventDefault()
+        toggleRecording()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleRecording])
 
   // Double-Esc interrupt: show warning overlay on first Esc, interrupt on second
   const { showEscapeOverlay } = useEscapeInterrupt()
@@ -2013,6 +2177,42 @@ Model
               </Tooltip>
             )
           })()}
+
+          {/* 5.5 Voice Recording Button */}
+          {!isProcessing && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={cn(
+                    'h-7 w-7 rounded-full shrink-0 ml-1',
+                    isRecording && 'bg-red-500/20 text-red-500 animate-pulse',
+                    isTranscribing && 'opacity-50 pointer-events-none',
+                  )}
+                  onMouseDown={(e) => { e.preventDefault(); handleMicMouseDown() }}
+                  onMouseUp={handleMicMouseUp}
+                  onMouseLeave={handleMicMouseUp}
+                  disabled={disabled || isTranscribing}
+                >
+                  {isTranscribing ? (
+                    <Spinner className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {isRecording
+                  ? `Recording... ${recordingDuration}s — release to transcribe`
+                  : isTranscribing
+                    ? 'Transcribing...'
+                    : `Hold to record voice (${isMac ? '⌘' : 'Ctrl'}+Shift+V to toggle)`
+                }
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* 6. Send/Stop Button - Always show stop when processing */}
           {isProcessing ? (
