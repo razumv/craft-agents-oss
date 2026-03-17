@@ -77,6 +77,7 @@ import {
   addRecentWorkingDir,
   removeRecentWorkingDir,
 } from './working-directory-history'
+import { useIsRemote } from '@/hooks/useIsRemote'
 
 /**
  * Format token count for display (e.g., 1500 -> "1.5k", 200000 -> "200k")
@@ -2078,7 +2079,9 @@ function WorkingDirectoryBadge({
   const [homeDir, setHomeDir] = React.useState<string>('')
   const [gitBranch, setGitBranch] = React.useState<string | null>(null)
   const [filter, setFilter] = React.useState('')
+  const [remotePathInput, setRemotePathInput] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const isRemote = useIsRemote()
 
   // Load home directory and recent directories on mount
   React.useEffect(() => {
@@ -2259,13 +2262,35 @@ function WorkingDirectoryBadge({
 
           {/* Bottom actions - always visible, outside scrollable area */}
           <div className="border-t border-border/50 p-1">
-            <button
-              type="button"
-              onClick={handleChooseFolder}
-              className={cn(MENU_ITEM_STYLE, 'w-full hover:bg-foreground/5')}
-            >
-              Choose Folder...
-            </button>
+            {isRemote ? (
+              <div className="flex items-center gap-1 px-1 py-1">
+                <input
+                  type="text"
+                  value={remotePathInput}
+                  onChange={(e) => setRemotePathInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && remotePathInput.trim()) {
+                      const path = remotePathInput.trim()
+                      setRecentDirs(addRecentWorkingDir(path))
+                      onWorkingDirectoryChange(path)
+                      setRemotePathInput('')
+                      setPopoverOpen(false)
+                    }
+                    if (e.key === 'Escape') setPopoverOpen(false)
+                  }}
+                  placeholder="Enter server path..."
+                  className="flex-1 h-7 px-2 text-sm bg-background border border-border rounded-md outline-none placeholder:text-muted-foreground/50"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleChooseFolder}
+                className={cn(MENU_ITEM_STYLE, 'w-full hover:bg-foreground/5')}
+              >
+                Choose Folder...
+              </button>
+            )}
             {showReset && (
               <button
                 type="button"
