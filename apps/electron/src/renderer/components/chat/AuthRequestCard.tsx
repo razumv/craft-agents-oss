@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useState, useCallback } from 'react'
 import { Key, User, Lock, Eye, EyeOff, CheckCircle2, XCircle, type LucideIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { Spinner } from '@craft-agent/ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -265,13 +266,18 @@ export function AuthRequestCard({ message, onRespondToCredential, sessionId, isI
     if (!authRequestId || !authSourceSlug) return
     setIsSubmitting(true)
     try {
-      await window.electronAPI.performOAuth({
+      const result = await window.electronAPI.performOAuth({
         sourceSlug: authSourceSlug,
         sessionId,
         authRequestId,
       })
+      if (!result.success && result.error) {
+        toast.error('Authentication failed', { description: result.error })
+      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'OAuth flow failed'
       console.error('Failed to start OAuth:', error)
+      toast.error('Authentication failed', { description: message })
     } finally {
       setIsSubmitting(false)
     }

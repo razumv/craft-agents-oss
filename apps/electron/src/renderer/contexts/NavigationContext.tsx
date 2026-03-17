@@ -788,7 +788,10 @@ export function NavigationProvider({
 
         case 'oauth':
           if (parsed.id) {
-            await window.electronAPI.performOAuth({ sourceSlug: parsed.id })
+            const oauthResult = await window.electronAPI.performOAuth({ sourceSlug: parsed.id })
+            if (!oauthResult.success && oauthResult.error) {
+              toast.error('Authentication failed', { description: oauthResult.error })
+            }
           }
           break
 

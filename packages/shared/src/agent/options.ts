@@ -205,8 +205,9 @@ export function getDefaultOptions(envOverrides?: Record<string, string>): Partia
         }
         return {
             pathToClaudeCodeExecutable: customPathToClaudeCodeExecutable,
-            // Use custom executable if set, otherwise default to 'bun'
-            executable: (customExecutable || 'bun') as 'bun',
+            // Use custom executable if set, otherwise fall back to process.execPath (the current bun runtime)
+            // Avoids PATH lookup failure when bun is not in the system PATH (e.g. systemd services)
+            executable: (customExecutable || process.execPath) as 'bun',
             executableArgs,
             env: {
                 ...process.env,

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getWorkspaceByNameOrId, addWorkspace, setActiveWorkspace } from '@craft-agent/shared/config'
+import { getWorkspaceByNameOrId, addWorkspace, setActiveWorkspace, getActiveWorkspace } from '@craft-agent/shared/config'
 import { perf } from '@craft-agent/shared/utils'
 import { pushTyped, type RpcServer } from '@craft-agent/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
@@ -61,12 +61,21 @@ export function registerWorkspaceCoreHandlers(server: RpcServer, deps: HandlerDe
 
   // Get workspace ID for the calling window
   server.handle(RPC_CHANNELS.window.GET_WORKSPACE, (ctx) => {
-    const workspaceId = ctx.workspaceId ?? windowManager?.getWorkspaceForWindow(ctx.webContentsId!)
+    // In headless mode windowManager is null — fall back to the active workspace from config
+    const workspaceId = ctx.workspaceId
+      ?? windowManager?.getWorkspaceForWindow(ctx.webContentsId!)
+      ?? getActiveWorkspace()?.id
     // Set up ConfigWatcher for live updates (labels, statuses, sources, themes)
     if (workspaceId) {
       const workspace = getWorkspaceByNameOrId(workspaceId)
       if (workspace) {
         sessionManager.setupConfigWatcher(workspace.rootPath, workspaceId)
+        // Sync ctx.workspaceId on the server so subsequent RPC calls (oauth:start, etc.)
+        // have the correct workspace ID. This is needed in headless/remote mode where
+        // the client connects with its local workspace ID (not the server's).
+        if (ctx.workspaceId !== workspaceId) {
+          server.updateClientWorkspace?.(ctx.clientId, workspaceId)
+        }
       }
     }
     return workspaceId
