@@ -233,6 +233,11 @@ export interface McpSourceConfig {
    */
   clientId?: string;
 
+  /**
+   * OAuth client secret (for providers that require it during token exchange, e.g. Figma).
+   */
+  clientSecret?: string;
+
   // === Stdio transport fields ===
   /**
    * Command to spawn for stdio transport.

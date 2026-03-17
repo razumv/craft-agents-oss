@@ -480,15 +480,20 @@ async function exchangeMcpCodeForTokens(
   code: string,
   codeVerifier: string,
   clientId: string,
-  redirectUri: string
+  redirectUri: string,
+  clientSecret?: string
 ): Promise<OAuthTokens> {
-  const params = new URLSearchParams({
+  const paramEntries: Record<string, string> = {
     grant_type: 'authorization_code',
     code,
     redirect_uri: redirectUri,
     client_id: clientId,
     code_verifier: codeVerifier,
-  });
+  };
+  if (clientSecret) {
+    paramEntries.client_secret = clientSecret;
+  }
+  const params = new URLSearchParams(paramEntries);
 
   const response = await fetch(tokenEndpoint, {
     method: 'POST',
@@ -528,8 +533,10 @@ async function exchangeMcpCodeForTokens(
  * @param preconfiguredClientId - If provided, skip dynamic registration entirely.
  *   Use this for MCP servers that don't support RFC 7591 dynamic registration
  *   (e.g. Figma MCP returns 403). The client_id must be pre-registered with the provider.
+ * @param preconfiguredClientSecret - If provided, included in the token exchange request.
+ *   Required by some providers (e.g. Figma) even when PKCE is used.
  */
-export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, preconfiguredClientId?: string): Promise<PreparedOAuthFlow> {
+export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, preconfiguredClientId?: string, preconfiguredClientSecret?: string): Promise<PreparedOAuthFlow> {
   const metadata = await discoverOAuthMetadata(mcpUrl);
   if (!metadata) {
     throw new Error(`No OAuth metadata found for ${mcpUrl}`);
@@ -571,6 +578,7 @@ export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, prec
     codeVerifier: pkce.verifier,
     tokenEndpoint: metadata.token_endpoint,
     clientId,
+    clientSecret: preconfiguredClientSecret,
     redirectUri,
     provider: 'mcp',
   };
@@ -586,7 +594,8 @@ export async function exchangeMcpOAuth(params: OAuthExchangeParams): Promise<OAu
       params.code,
       params.codeVerifier,
       params.clientId,
-      params.redirectUri
+      params.redirectUri,
+      params.clientSecret
     );
 
     return {
@@ -595,6 +604,7 @@ export async function exchangeMcpOAuth(params: OAuthExchangeParams): Promise<OAu
       refreshToken: tokens.refreshToken,
       expiresAt: tokens.expiresAt,
       oauthClientId: params.clientId,
+      oauthClientSecret: params.clientSecret,
     };
   } catch (error) {
     return {
