@@ -593,6 +593,37 @@ export function FreeFormInput({
         console.log(`[voice] Track ${i} settings:`, JSON.stringify(settings))
       })
 
+      // Diagnose audio level via AudioContext
+      try {
+        const audioCtx = new AudioContext()
+        const source = audioCtx.createMediaStreamSource(stream)
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 2048
+        source.connect(analyser)
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+        let checkCount = 0
+        const levelCheck = setInterval(() => {
+          analyser.getByteTimeDomainData(dataArray)
+          // Calculate RMS level (128 = silence for unsigned byte domain data)
+          let sum = 0
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = (dataArray[i] - 128) / 128
+            sum += v * v
+          }
+          const rms = Math.sqrt(sum / dataArray.length)
+          const peak = Math.max(...Array.from(dataArray).map(v => Math.abs(v - 128)))
+          console.log(`[voice] Audio level: RMS=${rms.toFixed(4)}, peak=${peak}`)
+          checkCount++
+          if (checkCount >= 10) {
+            clearInterval(levelCheck)
+            source.disconnect()
+            audioCtx.close()
+          }
+        }, 500)
+      } catch (e) {
+        console.warn('[voice] AudioContext diagnostic failed:', e)
+      }
+
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm'
@@ -2201,10 +2232,9 @@ Model
                 <Button
                   type="button"
                   size="icon"
-                  variant={isRecording ? 'destructive' : 'secondary'}
                   className={cn(
-                    'h-7 w-7 rounded-full shrink-0 ml-1',
-                    isRecording && 'animate-pulse',
+                    'h-7 w-7 rounded-full shrink-0 ml-2',
+                    isRecording && 'bg-red-500 hover:bg-red-600 text-white animate-pulse',
                     isTranscribing && 'opacity-50 pointer-events-none',
                   )}
                   onClick={toggleRecording}
