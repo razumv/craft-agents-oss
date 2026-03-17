@@ -449,7 +449,7 @@ export class SourceCredentialManager {
         if (!source.config.mcp?.url) {
           throw new Error('MCP URL not configured');
         }
-        return prepareMcpOAuth(source.config.mcp.url, callbackPort, source.config.mcp.clientId, source.config.mcp.clientSecret);
+        return prepareMcpOAuth(source.config.mcp.url, callbackPort, source.config.mcp.clientId, source.config.mcp.clientSecret, source.config.mcp.scope);
       }
     }
   }

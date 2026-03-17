@@ -536,7 +536,7 @@ async function exchangeMcpCodeForTokens(
  * @param preconfiguredClientSecret - If provided, included in the token exchange request.
  *   Required by some providers (e.g. Figma) even when PKCE is used.
  */
-export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, preconfiguredClientId?: string, preconfiguredClientSecret?: string): Promise<PreparedOAuthFlow> {
+export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, preconfiguredClientId?: string, preconfiguredClientSecret?: string, scope?: string): Promise<PreparedOAuthFlow> {
   const metadata = await discoverOAuthMetadata(mcpUrl);
   if (!metadata) {
     throw new Error(`No OAuth metadata found for ${mcpUrl}`);
@@ -571,6 +571,9 @@ export async function prepareMcpOAuth(mcpUrl: string, callbackPort: number, prec
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge', pkce.challenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
+  if (scope) {
+    authUrl.searchParams.set('scope', scope);
+  }
 
   return {
     authUrl: authUrl.toString(),

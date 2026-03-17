@@ -238,6 +238,12 @@ export interface McpSourceConfig {
    */
   clientSecret?: string;
 
+  /**
+   * OAuth scopes to request (space-separated). If not set, no scope parameter is sent.
+   * Use for providers that require explicit scopes (e.g. Figma: "file_content:read").
+   */
+  scope?: string;
+
   // === Stdio transport fields ===
   /**
    * Command to spawn for stdio transport.
