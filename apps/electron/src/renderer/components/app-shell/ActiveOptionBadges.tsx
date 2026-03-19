@@ -18,6 +18,7 @@ import { SessionStatusMenu } from '@/components/ui/session-status-menu'
 import { MetadataBadge } from '@/components/ui/metadata-badge'
 import { Input } from '@/components/ui/input'
 import { useAppShellContext, useSession } from '@/context/AppShellContext'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { SessionFilesSection } from '../right-sidebar/SessionFilesSection'
 
 // ============================================================================
@@ -122,6 +123,7 @@ export function ActiveOptionBadges({
     return result
   }, [sessionLabels, labels])
 
+  const isMobile = useIsMobile()
   const hasLabels = resolvedLabels.length > 0
 
   // Resolve the current state from sessionStatuses for the badge display.
@@ -129,10 +131,11 @@ export function ActiveOptionBadges({
   // when currentSessionStatus isn't explicitly set, matching SessionList's behavior.
   const effectiveStateId = currentSessionStatus || 'todo'
   const resolvedState = sessionStatuses.length > 0 ? getState(effectiveStateId, sessionStatuses) : undefined
-  const hasState = !!resolvedState
+  const hasState = !isMobile && !!resolvedState
 
   // Show the stacking container when there are labels (state badge is now rendered standalone on the left)
-  const hasStackContent = hasLabels
+  // On mobile: hide labels to prevent overlap — only show Execute + Info
+  const hasStackContent = !isMobile && hasLabels
 
   // Dynamic stacking with equal visible strips: ResizeObserver computes per-badge
   // margins directly on children. Wider badges get more negative margins so each
