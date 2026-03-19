@@ -310,4 +310,7 @@ if (wsMode === 'remote') {
   }
 }
 
+// Mark as Electron so renderer code can distinguish from web client
+;(api as any).__isElectron = true
+
 contextBridge.exposeInMainWorld('electronAPI', api)

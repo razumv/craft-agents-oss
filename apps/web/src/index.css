@@ -1,0 +1,227 @@
+@import "tailwindcss" source(none);
+@plugin "@tailwindcss/typography";
+
+/* Scan the same component sources as Electron renderer */
+@source "../../electron/src/renderer/App.tsx";
+@source "../../electron/src/renderer/main.tsx";
+@source "../../electron/src/renderer/components/**/*.{ts,tsx,jsx}";
+@source "../../electron/src/renderer/contexts/**/*.{ts,tsx,jsx}";
+@source "../../electron/src/renderer/hooks/**/*.{ts,tsx,jsx}";
+@source "../../electron/src/renderer/pages/**/*.{ts,tsx,jsx}";
+@source "../../electron/src/renderer/tabs/**/*.{ts,tsx,jsx}";
+@source "../../../packages/ui/src/components/**/*.{ts,tsx,jsx}";
+@source "../../../packages/ui/src/lib/**/*.{ts,tsx,jsx}";
+/* Web-specific sources */
+@source "../src/main.tsx";
+@source "../src/ConnectionSettings.tsx";
+
+/* Import ALL shared styles from Electron renderer:
+   - @property declarations (animatable CSS custom properties)
+   - :root / .dark theme variables (6-color system + all derived vars)
+   - @theme inline (Tailwind color mappings)
+   - @layer base (html/body/scrollbar/focus)
+   - @layer utilities (shadow-*, scrollbar-*, mask-fade-*)
+   - @layer components (step-*, feature-bullet)
+   - Animations (shimmer, shake, spinner, toast-in)
+   - Scenic mode, popover, toast, PDF viewer styles
+*/
+@import "../../electron/src/renderer/shared-styles.css";
+
+/* =============================================================================
+   WEB-SPECIFIC OVERRIDES
+   Everything below is unique to the web/mobile client
+============================================================================= */
+
+/* Web body: use background color (Electron uses transparent for vibrancy) */
+body {
+  background: var(--background);
+}
+
+/* PWA standalone: use dynamic viewport height for proper fullscreen fill.
+   100dvh accounts for iOS dynamic toolbar / home indicator correctly.
+   Falls back to 100vh for older browsers. */
+html, body, #root {
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* =============================================================================
+   WEB-SPECIFIC: Remove Electron window chrome
+============================================================================= */
+
+/* No traffic light space on macOS */
+.traffic-light-spacer {
+  display: none !important;
+}
+
+/* No Electron title bar drag regions */
+.titlebar-drag-region {
+  -webkit-app-region: initial;
+  app-region: initial;
+}
+
+/* =============================================================================
+   GLOBAL TOUCH & PERFORMANCE
+   §2 tap-delay: eliminate 300ms delay
+   §3 smooth scrolling
+============================================================================= */
+
+html {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling for chat */
+.chat-messages-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* =============================================================================
+   MOBILE DRAWER
+   §4 blur-purpose: blur = background dismissal
+   §9 modal-escape, drawer-usage
+============================================================================= */
+
+/* Backdrop scrim — 55% black + blur for foreground legibility */
+.mobile-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Drawer safe area */
+.mobile-sidebar-drawer {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* Landscape safe areas — Dynamic Island creates left/right insets */
+.mobile-web-shell {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Drawer header border */
+.mobile-drawer-header {
+  border-bottom: 1px solid var(--border, rgba(128,128,128,0.2));
+}
+
+/* =============================================================================
+   MOBILE BREAKPOINT (< 768px)
+   §2 safe-area-awareness, touch-target-size
+   §5 mobile-first, content-priority, horizontal-scroll
+   §6 readable-font-size (16px prevents iOS auto-zoom)
+   §7 duration 150-300ms
+============================================================================= */
+
+@media (max-width: 767px) {
+  /* === Remove desktop TopBar offset — TopBar is in-flow on mobile web === */
+  .pt-\[48px\] {
+    padding-top: 0 !important;
+  }
+
+  /* === MOBILE WEB SHELL: flex-col container, clipped to viewport ===
+     TopBar (shrink-0) + layout (flex-1) stack vertically.
+     overflow: hidden prevents any child from extending past screen edges. */
+  .mobile-web-shell {
+    overflow: hidden !important;
+  }
+
+  /* === LAYOUT: override height: 100% (set by JS) with flex fill ===
+     height: 100% would equal the PARENT height which includes TopBar,
+     pushing the bottom past the viewport. flex: 1 fills only remaining space. */
+  .mobile-web-layout {
+    height: auto !important;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* === TopBar safe area (replaces fragile inline env() style) === */
+  .mobile-topbar-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+    background: var(--background);
+  }
+
+  /* === EDGE-TO-EDGE PANELS ===
+     Remove rounded corners, shadows, and bg-foreground-2 tint.
+     The 2% tint creates a visible seam at screen edges. */
+  .shadow-middle,
+  .shadow-panel-focused {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .bg-foreground-2 {
+    background: var(--background) !important;
+  }
+
+  /* === Panel scroll container: fill width, no overflow === */
+  .panel-scroll {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* === PREVENT HORIZONTAL OVERFLOW === */
+  pre {
+    max-width: calc(100% - 24px);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* === 16px INPUT FONT (prevents iOS auto-zoom) === */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* === HIDE DESKTOP-ONLY CHROME === */
+  [data-panel-sash] {
+    display: none !important;
+  }
+
+  /* === HIDE SCROLLBARS ON MOBILE ===
+     Custom ::-webkit-scrollbar styles make scrollbars permanent on iOS,
+     stealing layout space. Hide them — iOS uses native overlay scrolling. */
+  * {
+    scrollbar-width: none !important;
+  }
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* === CHAT MESSAGE SPACING === */
+  .chat-message {
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  /* === SIDEBAR NAV IN DRAWER: compact layout === */
+  .mobile-sidebar-drawer [data-focus-zone="sidebar"] {
+    width: 100% !important;
+  }
+
+  /* === TOUCH-FRIENDLY SESSION LIST ITEMS === */
+  [data-session-item] {
+    min-height: 44px;
+  }
+}
+
+/* =============================================================================
+   SMALL PHONES (< 380px)
+   §5 content-priority: tighten spacing further
+============================================================================= */
+
+@media (max-width: 380px) {
+  .chat-message {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}

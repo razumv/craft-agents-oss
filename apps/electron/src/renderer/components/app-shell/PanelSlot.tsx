@@ -38,6 +38,8 @@ interface PanelSlotProps {
   proportion: number
   /** Optional sash element rendered before this panel */
   sash?: React.ReactNode
+  /** Mobile mode — edge-to-edge, no shadow, no border-radius */
+  isMobile?: boolean
 }
 
 export function PanelSlot({
@@ -49,6 +51,7 @@ export function PanelSlot({
   isAtRightEdge,
   proportion,
   sash,
+  isMobile,
 }: PanelSlotProps) {
   const closePanel = useSetAtom(closePanelAtom)
   const setFocusedPanel = useSetAtom(focusedPanelIdAtom)
@@ -91,7 +94,7 @@ export function PanelSlot({
         onPointerDown={handlePointerDown}
         className={cn(
           'h-full overflow-hidden relative',
-          !isOnly && isFocusedPanel ? 'shadow-panel-focused z-[1]' : 'shadow-middle z-0',
+          isMobile ? 'z-0' : (!isOnly && isFocusedPanel ? 'shadow-panel-focused z-[1]' : 'shadow-middle z-0'),
           'bg-foreground-2',
         )}
         style={{
@@ -105,14 +108,20 @@ export function PanelSlot({
               } as React.CSSProperties
             : {}
           ),
-          // Corner radii: edge corners (touching window boundary) vs interior corners
-          borderTopLeftRadius: RADIUS_INNER,
-          borderBottomLeftRadius: isAtLeftEdge ? RADIUS_EDGE : RADIUS_INNER,
-          borderTopRightRadius: RADIUS_INNER,
-          borderBottomRightRadius: isAtRightEdge ? RADIUS_EDGE : RADIUS_INNER,
-          ...(isOnly
-            ? { flexGrow: 1, minWidth: 0 }
-            : { flexGrow: proportion, flexShrink: 1, flexBasis: 0, minWidth: PANEL_MIN_WIDTH }
+          // Mobile: edge-to-edge, no border-radius, no shadow
+          // Desktop: corner radii based on position
+          ...(isMobile
+            ? { borderRadius: 0, flexGrow: 1, minWidth: 0 }
+            : {
+                borderTopLeftRadius: RADIUS_INNER,
+                borderBottomLeftRadius: isAtLeftEdge ? RADIUS_EDGE : RADIUS_INNER,
+                borderTopRightRadius: RADIUS_INNER,
+                borderBottomRightRadius: isAtRightEdge ? RADIUS_EDGE : RADIUS_INNER,
+                ...(isOnly
+                  ? { flexGrow: 1, minWidth: 0 }
+                  : { flexGrow: proportion, flexShrink: 1, flexBasis: 0, minWidth: PANEL_MIN_WIDTH }
+                ),
+              }
           ),
         }}
       >

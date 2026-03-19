@@ -81,6 +81,7 @@ import {
   removeRecentWorkingDir,
 } from './working-directory-history'
 import { useIsRemote } from '@/hooks/useIsRemote'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 /**
  * Format token count for display (e.g., 1500 -> "1.5k", 200000 -> "200k")
@@ -311,6 +312,8 @@ export function FreeFormInput({
     if (conn.models && conn.models.length > 1) return null
     return conn.defaultModel ?? null
   }, [currentConnection, workspaceDefaultConnection, llmConnections])
+
+  const isMobile = useIsMobile()
 
   // Compute available models from the effective connection.
   // All connections have models populated by backfillAllConnectionModels().
@@ -1817,7 +1820,7 @@ export function FreeFormInput({
           skills={skills}
           sources={sources}
           workspaceId={workspaceSlug}
-          className="pl-5 pr-4 pt-4 pb-3 overflow-y-auto min-h-[88px]"
+          className={cn("overflow-y-auto", isMobile ? "pl-3 pr-3 pt-2 pb-2 min-h-[52px]" : "pl-5 pr-4 pt-4 pb-3 min-h-[88px]")}
           style={{ maxHeight: inputMaxHeight }}
           data-tutorial="chat-input"
           spellCheck={spellCheck}
@@ -1832,11 +1835,11 @@ export function FreeFormInput({
             sessionId={sessionId}
           />
 
-          <div className={cn("flex items-center gap-1 px-2 py-2", !compactMode && "border-t border-border/50")}>
+          <div className={cn("flex items-center gap-1 py-2", isMobile ? "px-2 pb-[max(8px,env(safe-area-inset-bottom))]" : "px-2", !compactMode && "border-t border-border/50")}>
           {/* Left side: Context badges - shrinkable so model + send always stay visible */}
           {/* Hidden in compact mode (EditPopover embedding) */}
           {!compactMode && (
-          <div className="flex items-center gap-1 min-w-32 shrink overflow-hidden">
+          <div className={cn("flex items-center gap-1 shrink overflow-hidden", !isMobile && "min-w-32")}>
           {/* Hidden file input for attach button */}
           <input
             ref={fileInputRef}
@@ -1855,7 +1858,7 @@ export function FreeFormInput({
                 : `${attachments.length} files`
               : "Attach Files"
             }
-            isExpanded={isEmptySession}
+            isExpanded={isEmptySession && !isMobile}
             hasSelection={attachments.length > 0}
             showChevron={false}
             onClick={handleAttachClick}
@@ -1912,9 +1915,9 @@ export function FreeFormInput({
                         return `${enabledSources.length} sources`
                       })()
                 }
-                isExpanded={isEmptySession}
+                isExpanded={isEmptySession && !isMobile}
                 hasSelection={optimisticSourceSlugs.length > 0}
-                showChevron={true}
+                showChevron={!isMobile}
                 isOpen={sourceDropdownOpen}
                 disabled={disabled}
                 data-tutorial="source-selector-button"
@@ -1958,8 +1961,8 @@ export function FreeFormInput({
 
           {/* Right side: Model + Send - never shrink so they're always visible */}
           <div className="flex items-center shrink-0">
-          {/* 5. Model/Connection Selector - Hidden in compact mode (EditPopover embedding) */}
-          {!compactMode && (
+          {/* 5. Model/Connection Selector - Hidden in compact mode and on mobile */}
+          {!compactMode && !isMobile && (
           <DropdownMenu open={modelDropdownOpen} onOpenChange={setModelDropdownOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2228,15 +2231,16 @@ Model
             )
           })()}
 
-          {/* 5.5 Voice Recording Button */}
-          {!isProcessing && (
+          {/* 5.5 Voice Recording Button — always visible, even during processing */}
+          {(
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
                   size="icon"
                   className={cn(
-                    'h-7 w-7 rounded-full shrink-0 ml-2',
+                    'rounded-full shrink-0 ml-2',
+                    isMobile ? 'h-9 w-9' : 'h-7 w-7',
                     isRecording && 'bg-red-500 hover:bg-red-600 text-white animate-pulse',
                     isTranscribing && 'opacity-50 pointer-events-none',
                   )}
@@ -2244,9 +2248,9 @@ Model
                   disabled={disabled || isTranscribing}
                 >
                   {isTranscribing ? (
-                    <Spinner className="h-4 w-4" />
+                    <Spinner className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                   ) : (
-                    <Mic className="h-4 w-4" />
+                    <Mic className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -2267,20 +2271,20 @@ Model
               type="button"
               size="icon"
               variant="secondary"
-              className="h-7 w-7 rounded-full shrink-0 hover:bg-foreground/15 active:bg-foreground/20 ml-2"
+              className={cn("rounded-full shrink-0 hover:bg-foreground/15 active:bg-foreground/20 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
               onClick={() => handleStop(false)}
             >
-              <Square className="h-3 w-3 fill-current" />
+              <Square className={isMobile ? "h-4 w-4 fill-current" : "h-3 w-3 fill-current"} />
             </Button>
           ) : (
             <Button
               type="submit"
               size="icon"
-              className="h-7 w-7 rounded-full shrink-0 ml-2"
+              className={cn("rounded-full shrink-0 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
               disabled={!hasContent || disabled || disableSend}
               data-tutorial="send-button"
             >
-              <ArrowUp className="h-4 w-4" />
+              <ArrowUp className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
             </Button>
           )}
           </div>
@@ -2323,6 +2327,7 @@ function WorkingDirectoryBadge({
   isEmptySession?: boolean
   workspaceId?: string
 }) {
+  const isMobileBadge = useIsMobile()
   const [recentDirs, setRecentDirs] = React.useState<string[]>([])
   const [popoverOpen, setPopoverOpen] = React.useState(false)
   const [homeDir, setHomeDir] = React.useState<string>('')
@@ -2431,9 +2436,9 @@ function WorkingDirectoryBadge({
           <FreeFormInputContextBadge
             icon={<Icon_Home className="h-4 w-4" />}
             label={folderName}
-            isExpanded={isEmptySession}
+            isExpanded={isEmptySession && !isMobileBadge}
             hasSelection={hasFolder}
-            showChevron={true}
+            showChevron={!isMobileBadge}
             isOpen={popoverOpen}
             tooltip={
               hasFolder ? (

@@ -37,7 +37,7 @@ import { TopBar } from "./TopBar"
 import { SquarePenRounded } from "../icons/SquarePenRounded"
 import { McpIcon } from "../icons/McpIcon"
 import { cn } from "@/lib/utils"
-import { isMac } from "@/lib/platform"
+import { isMac, isWeb } from "@/lib/platform"
 import { Button } from "@/components/ui/button"
 import { HeaderIconButton } from "@/components/ui/HeaderIconButton"
 import { Separator } from "@/components/ui/separator"
@@ -131,6 +131,7 @@ import {
   RADIUS_INNER,
 } from "./panel-constants"
 import { hasOpenOverlay } from "@/lib/overlay-detection"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import { clearSourceIconCaches } from "@/lib/icon-cache"
 import { dispatchFocusInputEvent } from "./input/focus-input-events"
 
@@ -520,6 +521,11 @@ function AppShellContent({
 
   // Get hotkey labels from centralized action registry
   const newChatHotkey = useActionLabel('app.newChat').hotkey
+
+  // Mobile detection for responsive layout
+  const isMobile = useIsMobile()
+  // Mobile sidebar drawer state (separate from desktop sidebar visibility)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false)
 
   const [isSidebarVisible, setIsSidebarVisible] = React.useState(() => {
     return storage.get(storage.KEYS.sidebarVisible, !defaultCollapsed)
@@ -1087,12 +1093,16 @@ function AppShellContent({
   })
 
   const handleToggleSidebar = useCallback(() => {
+    if (isMobile) {
+      setMobileSidebarOpen(v => !v)
+      return
+    }
     if (isSidebarAndNavigatorHidden) {
       setIsSidebarAndNavigatorHidden(false)
       return
     }
     setIsSidebarVisible(v => !v)
-  }, [isSidebarAndNavigatorHidden])
+  }, [isMobile, isSidebarAndNavigatorHidden])
 
   // Sidebar toggle (CMD+B)
   useAction('view.toggleSidebar', handleToggleSidebar)
@@ -2158,6 +2168,9 @@ function AppShellContent({
 
   return (
     <AppShellProvider value={appShellContextValue}>
+      {/* On mobile web: flex-col wrapper so TopBar (relative) + layout stack naturally.
+          On desktop/Electron: fragment-like div with h-full (TopBar is fixed, layout uses full height). */}
+      <div className={cn("h-full", isMobile && isWeb && "mobile-web-shell flex flex-col w-full overflow-hidden")}>
         {/* === TOP BAR === */}
         <TopBar
           workspaces={workspaces}
@@ -2182,10 +2195,18 @@ function AppShellContent({
           onAddBrowserPanel={() => { void handleNewBrowserWindow() }}
         />
 
+      {/* === MOBILE SIDEBAR BACKDROP === */}
+      {isMobile && mobileSidebarOpen && (
+        <div
+          className="mobile-sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* === OUTER LAYOUT: Unified Panel Stack | Right Sidebar === */}
       <div
-        className="flex items-stretch relative"
-        style={{ height: '100%', paddingRight: PANEL_EDGE_INSET, paddingBottom: PANEL_EDGE_INSET, paddingLeft: 0, gap: PANEL_GAP }}
+        className={cn("flex items-stretch relative", isMobile && isWeb && "mobile-web-layout")}
+        style={{ height: '100%', paddingRight: isMobile ? 0 : PANEL_EDGE_INSET, paddingBottom: isMobile ? 0 : PANEL_EDGE_INSET, paddingLeft: 0, gap: isMobile ? 0 : PANEL_GAP }}
       >
         <PanelStackContainer
           sidebarSlot={
@@ -3170,6 +3191,7 @@ function AppShellContent({
                   }}
                   onSessionSelect={(selectedMeta) => {
                     navigateToSession(selectedMeta.id)
+                    if (isMobile) setMobileSidebarOpen(false)
                   }}
                   onOpenInNewWindow={(selectedMeta) => {
                     if (activeWorkspaceId) {
@@ -3211,10 +3233,13 @@ function AppShellContent({
           isSidebarAndNavigatorHidden={effectiveSidebarAndNavigatorHidden}
           isRightSidebarVisible={false}
           isResizing={!!isResizing}
+          isMobile={isMobile}
+          mobileSidebarOpen={mobileSidebarOpen}
+          onCloseMobileDrawer={() => setMobileSidebarOpen(false)}
         />
 
-        {/* Sidebar Resize Handle (absolute, hidden in focused mode) */}
-        {!effectiveSidebarAndNavigatorHidden && (
+        {/* Sidebar Resize Handle (absolute, hidden in focused mode and on mobile) */}
+        {!isMobile && !effectiveSidebarAndNavigatorHidden && (
         <div
           ref={resizeHandleRef}
           onMouseDown={(e) => { e.preventDefault(); setIsResizing('sidebar') }}
@@ -3486,6 +3511,7 @@ function AppShellContent({
         </DialogContent>
       </Dialog>
 
+      </div>{/* mobile-web-shell / h-full wrapper */}
     </AppShellProvider>
   )
 }

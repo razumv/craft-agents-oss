@@ -29,6 +29,11 @@ export const isLinux =
   typeof navigator !== 'undefined' &&
   navigator.platform.toLowerCase().includes('linux')
 
+/** True if running in a web browser (not Electron) */
+export const isWeb =
+  typeof window !== 'undefined' &&
+  !(window as any).electronAPI?.__isElectron
+
 /**
  * Get the platform-specific file manager name.
  * macOS → "Finder", Windows → "Explorer", Linux → "File Manager"

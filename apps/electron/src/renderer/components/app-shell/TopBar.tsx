@@ -12,7 +12,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@craft-agent/ui"
 import { CraftAgentsSymbol } from "../icons/CraftAgentsSymbol"
 import { PanelLeftRounded } from "../icons/PanelLeftRounded"
 import { TopBarButton } from "../ui/TopBarButton"
-import { isMac } from "@/lib/platform"
+import { isMac, isWeb } from "@/lib/platform"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import { useActionLabel } from "@/actions"
 import {
   DropdownMenu,
@@ -179,6 +180,7 @@ export function TopBar({
   onAddSessionPanel,
   onAddBrowserPanel,
 }: TopBarProps) {
+  const isMobile = useIsMobile()
   const [isDebugMode, setIsDebugMode] = useState(false)
   const [maxVisibleBrowserBadges, setMaxVisibleBrowserBadges] = useState(3)
   const rightSlotRef = useRef<HTMLDivElement | null>(null)
@@ -232,11 +234,57 @@ export function TopBar({
     toggleSidebar: onToggleSidebar,
   }
 
-  const menuLeftPadding = isMac ? 86 : 12
+  const menuLeftPadding = isWeb ? 8 : isMac ? 86 : 12
+
+  // Mobile: simplified layout — hamburger | workspace | new chat
+  // Desktop: full layout with menus, browser strip, etc.
+  if (isMobile) {
+    // Web PWA: TopBar is a normal flow element (shrink-0) inside a flex-col parent.
+    // Electron: TopBar is fixed-positioned overlay with vibrancy.
+    const topBarClasses = isWeb
+      ? "shrink-0 z-panel w-full mobile-topbar-safe"
+      : "fixed top-0 left-0 right-0 z-panel h-[44px]"
+
+    return (
+      <div className={topBarClasses} style={isWeb ? undefined : { paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="flex h-[44px] w-full items-center justify-between px-2">
+          {/* LEFT: Hamburger menu (44x44 touch target) */}
+          <button
+            onClick={onToggleSidebar}
+            aria-label="Open sessions"
+            className="flex items-center justify-center h-[44px] w-[44px] shrink-0 rounded-lg active:bg-foreground/10 transition-colors"
+          >
+            <Icons.Menu className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+          </button>
+
+          {/* CENTER: Workspace name */}
+          <div className="flex-1 min-w-0 flex items-center justify-center">
+            <WorkspaceSwitcher
+              variant="topbar"
+              workspaces={workspaces}
+              activeWorkspaceId={activeWorkspaceId}
+              onSelect={onSelectWorkspace}
+              onWorkspaceCreated={onWorkspaceCreated}
+              workspaceUnreadMap={workspaceUnreadMap}
+            />
+          </div>
+
+          {/* RIGHT: New chat (44x44 touch target) */}
+          <button
+            onClick={onNewChat}
+            aria-label="New chat"
+            className="flex items-center justify-center h-[44px] w-[44px] shrink-0 rounded-lg active:bg-foreground/10 transition-colors"
+          >
+            <SquarePenRounded className="h-5 w-5 text-foreground/80" />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 h-[48px] z-panel titlebar-drag-region"
+      className="fixed top-0 left-0 right-0 z-panel h-[48px] titlebar-drag-region"
     >
       <div className="flex h-full w-full items-center justify-between gap-2">
       {/* === LEFT: Sidebar + Menu + Navigation + Workspace === */}
@@ -366,24 +414,24 @@ export function TopBar({
         </div>
 
         {/* Back / Forward / Workspace selector (moved from center) */}
-        <div className="ml-1 flex w-[clamp(220px,42vw,640px)] min-w-0 items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TopBarButton onClick={onBack} disabled={!canGoBack} aria-label="Go back">
-                <Icons.ChevronLeft className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.5} />
-              </TopBarButton>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Back {goBackHotkey}</TooltipContent>
-          </Tooltip>
+        <div className="ml-1 flex min-w-0 items-center gap-1 w-[clamp(220px,42vw,640px)]">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TopBarButton onClick={onBack} disabled={!canGoBack} aria-label="Go back">
+                    <Icons.ChevronLeft className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.5} />
+                  </TopBarButton>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Back {goBackHotkey}</TooltipContent>
+              </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TopBarButton onClick={onForward} disabled={!canGoForward} aria-label="Go forward">
-                <Icons.ChevronRight className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.5} />
-              </TopBarButton>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Forward {goForwardHotkey}</TooltipContent>
-          </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TopBarButton onClick={onForward} disabled={!canGoForward} aria-label="Go forward">
+                    <Icons.ChevronRight className="h-[18px] w-[18px] text-foreground/70" strokeWidth={1.5} />
+                  </TopBarButton>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Forward {goForwardHotkey}</TooltipContent>
+              </Tooltip>
 
           <div className="min-w-0 flex-1">
             <WorkspaceSwitcher
@@ -400,9 +448,9 @@ export function TopBar({
 
       {/* === RIGHT: Browser strip + add + help === */}
       <div ref={rightSlotRef} className="flex min-w-0 shrink-0 items-center justify-end gap-1" style={{ paddingRight: 12 }}>
-        <div className="min-w-0">
-          <BrowserTabStrip activeSessionId={activeSessionId} maxVisibleBadges={maxVisibleBrowserBadges} />
-        </div>
+          <div className="min-w-0">
+            <BrowserTabStrip activeSessionId={activeSessionId} maxVisibleBadges={maxVisibleBrowserBadges} />
+          </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <TopBarButton aria-label="Add panel menu" className="ml-1 h-[26px] w-[26px] rounded-lg">

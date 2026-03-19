@@ -1,0 +1,19 @@
+{
+  "name": "@craft-agent/web",
+  "version": "0.7.6",
+  "description": "Web client for Craft Agent — connects to headless server via WebSocket",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@craft-agent/core": "workspace:*",
+    "@craft-agent/shared": "workspace:*",
+    "@craft-agent/server-core": "workspace:*",
+    "@craft-agent/ui": "workspace:*"
+  }
+}

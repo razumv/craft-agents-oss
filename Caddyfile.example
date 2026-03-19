@@ -1,0 +1,39 @@
+# Craft Agent Web Client — Caddy reverse proxy config
+#
+# Copy this file and customize:
+#   cp Caddyfile.example Caddyfile
+#   # Edit domain and paths below
+#
+# Then import from your root Caddyfile:
+#   import /path/to/craft-agents-oss/Caddyfile
+#
+# Or run standalone:
+#   caddy run --config Caddyfile
+
+craft.razumv.tech {
+	# Static SPA — serve built web client
+	root * /path/to/craft-agents-oss/apps/web/dist
+	file_server
+
+	# SPA fallback — all non-file routes → index.html
+	try_files {path} /index.html
+
+	# WebSocket reverse proxy — headless server
+	handle /ws {
+		reverse_proxy localhost:9100
+	}
+
+	# Also proxy root WS upgrade (for clients connecting to wss://domain/)
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @websocket {
+		reverse_proxy localhost:9100
+	}
+
+	# OAuth callback endpoint (server-side redirect handling)
+	handle /oauth/* {
+		reverse_proxy localhost:9100
+	}
+}

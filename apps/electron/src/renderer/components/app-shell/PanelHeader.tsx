@@ -33,6 +33,7 @@ import { motion } from 'motion/react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCompensateForStoplight } from '@/context/StoplightContext'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -67,6 +68,8 @@ export interface PanelHeaderProps {
   className?: string
   /** Whether title is being regenerated (shows shimmer effect) */
   isRegeneratingTitle?: boolean
+  /** Mobile mode — 44px height, no stoplight compensation */
+  isMobile?: boolean
 }
 
 /**
@@ -83,10 +86,15 @@ export function PanelHeader({
   paddingLeft,
   className,
   isRegeneratingTitle,
+  isMobile: isMobileProp,
 }: PanelHeaderProps) {
+  // Auto-detect mobile if prop not provided
+  const isMobileDetected = useIsMobile()
+  const isMobile = isMobileProp ?? isMobileDetected
   // Use context as fallback when prop is not explicitly set
   const contextCompensate = useCompensateForStoplight()
-  const shouldCompensate = compensateForStoplight ?? contextCompensate
+  // Never compensate for stoplight on mobile
+  const shouldCompensate = isMobile ? false : (compensateForStoplight ?? contextCompensate)
 
   // Controlled dropdown state for anchoring to chevron while keeping full title clickable
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -163,9 +171,10 @@ export function PanelHeader({
   const basePadding = 16
 
   const baseClassName = cn(
-    'flex shrink-0 items-center pr-2 min-w-0 gap-1.5 relative z-panel h-[42px]',
+    'flex shrink-0 items-center pr-2 min-w-0 gap-1.5 relative z-panel',
+    isMobile ? 'h-[44px]' : 'h-[42px]',
     // Only use static paddingLeft class when not animating
-    !shouldCompensate && (paddingLeft || 'pl-4'),
+    !shouldCompensate && (paddingLeft || (isMobile ? 'pl-3' : 'pl-4')),
     className
   )
 

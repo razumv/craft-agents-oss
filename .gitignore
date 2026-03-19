@@ -63,6 +63,9 @@ id_ed25519*
 credentials.enc
 *.credentials
 
+# Caddy config (local, contains paths — use Caddyfile.example as template)
+Caddyfile
+
 # act (local GitHub Actions runner)
 .secrets
 .actrc
