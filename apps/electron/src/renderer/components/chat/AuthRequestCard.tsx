@@ -263,7 +263,14 @@ export function AuthRequestCard({ message, onRespondToCredential, sessionId, isI
 
   const handleOAuthClick = useCallback(async () => {
     // Client-driven OAuth: callback server runs locally, server owns tokens
-    if (!authRequestId || !authSourceSlug) return
+    if (!authRequestId || !authSourceSlug) {
+      console.warn('[AuthRequestCard] handleOAuthClick bailed: missing', {
+        authRequestId: authRequestId ?? 'MISSING',
+        authSourceSlug: authSourceSlug ?? 'MISSING',
+        sessionId,
+      })
+      return
+    }
     setIsSubmitting(true)
     try {
       const result = await window.electronAPI.performOAuth({
@@ -271,12 +278,15 @@ export function AuthRequestCard({ message, onRespondToCredential, sessionId, isI
         sessionId,
         authRequestId,
       })
-      if (!result.success && result.error) {
-        toast.error('Authentication failed', { description: result.error })
+      if (!result.success) {
+        console.warn('[AuthRequestCard] performOAuth returned failure:', result.error)
+        if (result.error) {
+          toast.error('Authentication failed', { description: result.error })
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'OAuth flow failed'
-      console.error('Failed to start OAuth:', error)
+      console.error('[AuthRequestCard] performOAuth threw:', error)
       toast.error('Authentication failed', { description: message })
     } finally {
       setIsSubmitting(false)

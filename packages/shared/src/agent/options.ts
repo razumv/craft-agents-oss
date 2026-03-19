@@ -3,6 +3,7 @@ import { join, dirname } from "path";
 import { homedir } from "os";
 import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from "fs";
 import { debug } from "../utils/debug";
+import { getProxyEnvVars } from "../config/proxy-env.ts";
 
 declare const CRAFT_AGENT_CLI_VERSION: string | undefined;
 
@@ -211,6 +212,7 @@ export function getDefaultOptions(envOverrides?: Record<string, string>): Partia
             executableArgs,
             env: {
                 ...process.env,
+                ...getProxyEnvVars(),
                 ...envOverrides,
                 // Propagate debug mode from argv flag OR existing env var
                 CRAFT_DEBUG: (process.argv.includes('--debug') || process.env.CRAFT_DEBUG === '1') ? '1' : '0',
@@ -231,6 +233,7 @@ export function getDefaultOptions(envOverrides?: Record<string, string>): Partia
             env: {
                 ...process.env,
                 BUN_BE_BUN: '1',
+                ...getProxyEnvVars(),
                 ...envOverrides,
                 // Propagate debug mode from argv flag OR existing env var
                 CRAFT_DEBUG: (process.argv.includes('--debug') || process.env.CRAFT_DEBUG === '1') ? '1' : '0',
@@ -241,6 +244,7 @@ export function getDefaultOptions(envOverrides?: Record<string, string>): Partia
         executableArgs: [envFileFlag],
         env: {
             ...process.env,
+            ...getProxyEnvVars(),
             ...envOverrides,
             // Propagate debug mode from argv flag OR existing env var
             CRAFT_DEBUG: (process.argv.includes('--debug') || process.env.CRAFT_DEBUG === '1') ? '1' : '0',

@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils"
 import { Input } from "../ui/input"
 import { AddWorkspaceContainer, AddWorkspaceStepHeader, AddWorkspaceSecondaryButton, AddWorkspacePrimaryButton } from "./primitives"
 import { useIsRemote } from "@/hooks/useIsRemote"
+import { useDirectoryPicker } from "@/hooks/useDirectoryPicker"
+import { ServerDirectoryBrowser } from "@/components/ServerDirectoryBrowser"
 
 interface AddWorkspaceStep_OpenFolderProps {
   onBack: () => void
@@ -23,22 +25,20 @@ export function AddWorkspaceStep_OpenFolder({
   const [workspaceName, setWorkspaceName] = useState('')
   const isRemote = useIsRemote()
 
-  const handleBrowse = useCallback(async () => {
-    const path = await window.electronAPI.openFolderDialog()
-    if (path) {
-      setSelectedPath(path)
-      const folderName = path.split(/[\\/]/).pop() || path
-      setWorkspaceName(folderName)
-    }
+  const handleFolderSelected = useCallback((path: string) => {
+    setSelectedPath(path)
+    // Extract folder name for workspace name
+    const folderName = path.split(/[\\/]/).pop() || path
+    setWorkspaceName(folderName)
   }, [])
 
-  const handlePathInput = useCallback((value: string) => {
-    setSelectedPath(value || null)
-    if (value) {
-      const folderName = value.split(/[\\/]/).pop() || value
-      setWorkspaceName(folderName)
-    }
-  }, [])
+  const {
+    pickDirectory,
+    showServerBrowser,
+    serverBrowserMode,
+    cancelServerBrowser,
+    confirmServerBrowser,
+  } = useDirectoryPicker(handleFolderSelected)
 
   const handleOpen = useCallback(async () => {
     if (!selectedPath || !workspaceName.trim()) return
@@ -70,37 +70,26 @@ export function AddWorkspaceStep_OpenFolder({
 
       <div className="mt-6 w-full space-y-6">
         {/* Browse folder row */}
-        {isRemote ? (
-          <Input
-            value={selectedPath ?? ''}
-            onChange={(e) => handlePathInput(e.target.value)}
-            placeholder="/home/user/my-project"
-            disabled={isCreating}
-            autoFocus
-            className="bg-background shadow-minimal"
-          />
-        ) : (
-          <div
-            className={cn(
-              "flex items-center justify-between gap-4 p-4 rounded-xl",
-              "border border-border/50 bg-background"
+        <div
+          className={cn(
+            "flex items-center justify-between gap-4 p-4 rounded-xl",
+            "border border-border/50 bg-background"
+          )}
+        >
+          <div className="flex-1 min-w-0">
+            {selectedPath ? (
+              <p className="text-sm text-foreground truncate">{selectedPath}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No folder selected</p>
             )}
-          >
-            <div className="flex-1 min-w-0">
-              {selectedPath ? (
-                <p className="text-sm text-foreground truncate">{selectedPath}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">No folder selected</p>
-              )}
-            </div>
-            <AddWorkspaceSecondaryButton
-              onClick={handleBrowse}
-              disabled={isCreating}
-            >
-              Browse
-            </AddWorkspaceSecondaryButton>
           </div>
-        )}
+          <AddWorkspaceSecondaryButton
+            onClick={pickDirectory}
+            disabled={isCreating}
+          >
+            Browse
+          </AddWorkspaceSecondaryButton>
+        </div>
 
         {/* Workspace name input - shown after folder is selected */}
         {selectedPath && (
@@ -127,6 +116,13 @@ export function AddWorkspaceStep_OpenFolder({
           Open
         </AddWorkspacePrimaryButton>
       </div>
+
+      <ServerDirectoryBrowser
+        open={showServerBrowser}
+        mode={serverBrowserMode}
+        onSelect={confirmServerBrowser}
+        onCancel={cancelServerBrowser}
+      />
     </AddWorkspaceContainer>
   )
 }

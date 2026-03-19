@@ -1,6 +1,7 @@
 import { RPC_CHANNELS, type LlmConnectionSetup } from '@craft-agent/shared/protocol'
 import { getLlmConnections, getLlmConnection, addLlmConnection, updateLlmConnection, deleteLlmConnection, getDefaultLlmConnection, setDefaultLlmConnection, touchLlmConnection, isCompatProvider, isAnthropicProvider, getDefaultModelsForConnection, getDefaultModelForConnection, type LlmConnection, type LlmConnectionWithStatus } from '@craft-agent/shared/config'
 import { getCredentialManager } from '@craft-agent/shared/credentials'
+import { setSetupDeferred } from '@craft-agent/shared/config/storage'
 import {
   resolveSetupTestConnectionHint,
   testBackendConnection,
@@ -135,6 +136,13 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
         }
       }
 
+      // Bedrock auth method override — set providerType and authType
+      if (setup.bedrockAuthMethod) {
+        updates.authType = setup.bedrockAuthMethod
+        updates.providerType = 'bedrock'
+        if (setup.awsRegion) updates.awsRegion = setup.awsRegion
+      }
+
       const effectiveProviderType = updates.providerType ?? connection.providerType
       if (effectiveProviderType === 'pi') {
         const toPiModelId = (id: string) => id.startsWith('pi/') ? id : `pi/${id}`
@@ -217,6 +225,15 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
         }
       }
 
+      // Bedrock IAM credentials — stored separately from API keys
+      if (setup.iamCredentials) {
+        await manager.setLlmIamCredentials(setup.slug, {
+          ...setup.iamCredentials,
+          region: setup.awsRegion,
+        })
+        deps.platform.logger?.info('Saved IAM credentials to LLM connection')
+      }
+
       // Set as default only if no default exists yet (first connection)
       if (!getDefaultLlmConnection()) {
         setDefaultLlmConnection(setup.slug)
@@ -235,6 +252,9 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       // not the global default (which may be a different connection).
       await sessionManager.reinitializeAuth(setup.slug)
       deps.platform.logger?.info('Reinitialized auth after LLM connection setup')
+
+      // Clear "Setup later" flag now that user has configured a provider
+      setSetupDeferred(false)
 
       return { success: true }
     } catch (error) {

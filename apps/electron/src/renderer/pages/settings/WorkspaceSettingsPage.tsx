@@ -23,10 +23,13 @@ import { routes } from '@/lib/navigate'
 import { Spinner } from '@craft-agent/ui'
 import { RenameDialog } from '@/components/ui/rename-dialog'
 import type { PermissionMode, WorkspaceSettings, LoadedSource } from '../../../shared/types'
+import { useDirectoryPicker } from '@/hooks/useDirectoryPicker'
+import { ServerDirectoryBrowser } from '@/components/ServerDirectoryBrowser'
 import { PERMISSION_MODE_CONFIG } from '@craft-agent/shared/agent/mode-types'
 import type { DetailsPageMeta } from '@/lib/navigation-registry'
 import { SourceAvatar } from '@/components/ui/source-avatar'
 import { useIsRemote } from '@/hooks/useIsRemote'
+import { toast } from 'sonner'
 
 import {
   SettingsSection,
@@ -169,12 +172,18 @@ export default function WorkspaceSettingsPage() {
   // Save workspace setting
   const updateWorkspaceSetting = useCallback(
     async <K extends keyof WorkspaceSettings>(key: K, value: WorkspaceSettings[K]) => {
-      if (!window.electronAPI || !activeWorkspaceId) return
+      if (!window.electronAPI || !activeWorkspaceId) return false
 
       try {
         await window.electronAPI.updateWorkspaceSetting(activeWorkspaceId, key, value)
+        return true
       } catch (error) {
-        console.error(`Failed to save ${key}:`, error)
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        console.error(`Failed to save ${String(key)}:`, error)
+        toast.error(`Failed to save ${String(key)}`, {
+          description: message,
+        })
+        return false
       }
     },
     [activeWorkspaceId]
@@ -243,25 +252,12 @@ export default function WorkspaceSettingsPage() {
     [updateWorkspaceSetting]
   )
 
-  const handleChangeWorkingDirectory = useCallback(async () => {
-    if (!window.electronAPI) return
-
-    if (isRemote) {
-      setWorkingDirInput(workingDirectory)
-      setEditingWorkingDir(true)
-      return
+  const handleWorkingDirectorySelected = useCallback(async (selectedPath: string) => {
+    const saved = await updateWorkspaceSetting('workingDirectory', selectedPath)
+    if (saved) {
+      setWorkingDirectory(selectedPath)
     }
-
-    try {
-      const selectedPath = await window.electronAPI.openFolderDialog()
-      if (selectedPath) {
-        setWorkingDirectory(selectedPath)
-        await updateWorkspaceSetting('workingDirectory', selectedPath)
-      }
-    } catch (error) {
-      console.error('Failed to change working directory:', error)
-    }
-  }, [isRemote, workingDirectory, updateWorkspaceSetting])
+  }, [updateWorkspaceSetting])
 
   const handleSaveWorkingDir = useCallback(async () => {
     const path = workingDirInput.trim()
@@ -272,14 +268,20 @@ export default function WorkspaceSettingsPage() {
     setEditingWorkingDir(false)
   }, [workingDirInput, updateWorkspaceSetting])
 
+  const {
+    pickDirectory: handleChangeWorkingDirectory,
+    showServerBrowser: showWdBrowser,
+    serverBrowserMode: wdBrowserMode,
+    cancelServerBrowser: cancelWdBrowser,
+    confirmServerBrowser: confirmWdBrowser,
+  } = useDirectoryPicker(handleWorkingDirectorySelected)
+
   const handleClearWorkingDirectory = useCallback(async () => {
     if (!window.electronAPI) return
 
-    try {
+    const saved = await updateWorkspaceSetting('workingDirectory', undefined)
+    if (saved) {
       setWorkingDirectory('')
-      await updateWorkspaceSetting('workingDirectory', undefined)
-    } catch (error) {
-      console.error('Failed to clear working directory:', error)
     }
   }, [updateWorkspaceSetting])
 
@@ -593,6 +595,13 @@ export default function WorkspaceSettingsPage() {
         </div>
         </ScrollArea>
       </div>
+      <ServerDirectoryBrowser
+        open={showWdBrowser}
+        mode={wdBrowserMode}
+        onSelect={confirmWdBrowser}
+        onCancel={cancelWdBrowser}
+        initialPath={workingDirectory || undefined}
+      />
     </div>
   )
 }

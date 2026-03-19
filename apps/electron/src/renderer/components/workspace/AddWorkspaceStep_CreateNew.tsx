@@ -7,6 +7,8 @@ import { Button } from "../ui/button"
 import { AddWorkspaceContainer, AddWorkspaceStepHeader, AddWorkspaceSecondaryButton, AddWorkspacePrimaryButton } from "./primitives"
 import { AddWorkspace_RadioOption } from "./AddWorkspace_RadioOption"
 import { useIsRemote } from "@/hooks/useIsRemote"
+import { useDirectoryPicker } from "@/hooks/useDirectoryPicker"
+import { ServerDirectoryBrowser } from "@/components/ServerDirectoryBrowser"
 
 type LocationOption = 'default' | 'custom'
 
@@ -42,10 +44,10 @@ export function AddWorkspaceStep_CreateNew({
   }, [])
 
   const slug = slugify(name)
-  const defaultBasePath = homeDir ? `${homeDir}/.craft-agent/workspaces` : '~/.craft-agent/workspaces'
+  const defaultBasePath = homeDir ? `${homeDir}/.craft-agent/workspaces` : null
   const finalPath = locationOption === 'default'
-    ? `${defaultBasePath}/${slug}`
-    : customPath
+    ? (defaultBasePath && slug ? `${defaultBasePath}/${slug}` : null)
+    : customPath && slug
       ? `${customPath}/${slug}`
       : null
 
@@ -77,12 +79,17 @@ export function AddWorkspaceStep_CreateNew({
     return () => clearTimeout(timeout)
   }, [slug])
 
-  const handleBrowse = useCallback(async () => {
-    const path = await window.electronAPI.openFolderDialog()
-    if (path) {
-      setCustomPath(path)
-    }
+  const handleFolderSelected = useCallback((path: string) => {
+    setCustomPath(path)
   }, [])
+
+  const {
+    pickDirectory,
+    showServerBrowser,
+    serverBrowserMode,
+    cancelServerBrowser,
+    confirmServerBrowser,
+  } = useDirectoryPicker(handleFolderSelected)
 
   const handleCreate = useCallback(async () => {
     if (!name.trim() || !finalPath || error) return
@@ -158,25 +165,15 @@ export function AddWorkspaceStep_CreateNew({
             title="Choose a location"
             subtitle={(!isRemote && customPath) ? customPath : isRemote ? "Enter server path" : "Pick a place to put your new workspace."}
             action={locationOption === 'custom' ? (
-              isRemote ? (
-                <Input
-                  value={customPath ?? ''}
-                  onChange={(e) => setCustomPath(e.target.value || null)}
-                  placeholder="/home/user/projects"
-                  disabled={isCreating}
-                  className="w-48 h-7 text-sm bg-background shadow-minimal"
-                />
-              ) : (
-                <AddWorkspaceSecondaryButton
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleBrowse()
-                  }}
-                  disabled={isCreating}
-                >
-                  Browse
-                </AddWorkspaceSecondaryButton>
-              )
+              <AddWorkspaceSecondaryButton
+                onClick={(e) => {
+                  e.preventDefault()
+                  pickDirectory()
+                }}
+                disabled={isCreating}
+              >
+                Browse
+              </AddWorkspaceSecondaryButton>
             ) : undefined}
           />
         </div>
@@ -191,6 +188,12 @@ export function AddWorkspaceStep_CreateNew({
           Create
         </AddWorkspacePrimaryButton>
       </div>
+      <ServerDirectoryBrowser
+        open={showServerBrowser}
+        mode={serverBrowserMode}
+        onSelect={confirmServerBrowser}
+        onCancel={cancelServerBrowser}
+      />
     </AddWorkspaceContainer>
   )
 }
