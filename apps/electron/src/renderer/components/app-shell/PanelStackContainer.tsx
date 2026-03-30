@@ -21,7 +21,7 @@ import { useAtomValue } from 'jotai'
 import { motion } from 'motion/react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { panelStackAtom, focusedPanelIdAtom } from '@/atoms/panel-stack'
+import { panelStackAtom, focusedPanelIdAtom, focusedSessionIdAtom } from '@/atoms/panel-stack'
 import { PanelSlot } from './PanelSlot'
 import { PanelResizeSash } from './PanelResizeSash'
 import {
@@ -42,6 +42,8 @@ interface PanelStackContainerProps {
   navigatorWidth: number
   isSidebarAndNavigatorHidden: boolean
   isRightSidebarVisible?: boolean
+  /** Compact mode: single-panel, list/content toggle (mobile or narrow window) */
+  isCompact?: boolean
   isResizing?: boolean
   /** Mobile layout mode — sidebar+navigator render as fixed overlay */
   isMobile?: boolean
@@ -58,6 +60,7 @@ export function PanelStackContainer({
   navigatorWidth,
   isSidebarAndNavigatorHidden,
   isRightSidebarVisible,
+  isCompact = false,
   isResizing,
   isMobile,
   mobileSidebarOpen,
@@ -65,15 +68,27 @@ export function PanelStackContainer({
 }: PanelStackContainerProps) {
   const panelStack = useAtomValue(panelStackAtom)
   const focusedPanelId = useAtomValue(focusedPanelIdAtom)
+  const focusedSessionId = useAtomValue(focusedSessionIdAtom)
 
   const contentPanels = panelStack
+
+  // Compact mode: show list OR content based on the focused panel's ROUTE,
+  // not just whether a panel exists. When the route has a session selected
+  // (e.g., allSessions/session/abc), show content. When on a list view
+  // (e.g., allSessions), show navigator. This allows back-navigation to
+  // return to the session list.
+  const hasSelectedContent = isCompact && !!focusedSessionId
+  const visiblePanels = isCompact
+    ? contentPanels.filter(e => e.id === focusedPanelId).slice(0, 1)
+    : contentPanels
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(contentPanels.length)
 
   const hasSidebar = !isMobile && sidebarWidth > 0
-  const hasNavigator = !isMobile && navigatorWidth > 0
-  const isMultiPanel = contentPanels.length > 1
+  // In compact mode, hide navigator when content is selected (show list OR content, not both)
+  const hasNavigator = isMobile ? false : (isCompact ? (navigatorWidth > 0 && !hasSelectedContent) : navigatorWidth > 0)
+  const isMultiPanel = visiblePanels.length > 1
   const isLeftEdge = !hasSidebar && !hasNavigator
 
   // Auto-scroll to newly pushed content panel
@@ -139,7 +154,7 @@ export function PanelStackContainer({
     {mobileDrawer}
     <div
       ref={scrollRef}
-      className="flex-1 min-w-0 flex relative z-panel panel-scroll"
+      className="flex-1 min-w-0 flex relative z-panel panel-scroll @container/shell"
       style={{
         overflowX: isMobile ? 'hidden' : 'auto',
         overflowY: 'hidden',
@@ -168,6 +183,7 @@ export function PanelStackContainer({
       >
         {/* === SIDEBAR SLOT === */}
         <motion.div
+          data-panel-role="sidebar"
           initial={false}
           animate={{
             width: hasSidebar ? sidebarWidth : 0,
@@ -185,6 +201,7 @@ export function PanelStackContainer({
 
         {/* === NAVIGATOR SLOT === */}
         <motion.div
+          data-panel-role="navigator"
           initial={false}
           animate={{
             width: hasNavigator ? navigatorWidth : 0,
@@ -197,32 +214,36 @@ export function PanelStackContainer({
             'bg-background shadow-middle',
           )}
           style={{
+            // In compact mode (no content selected), navigator fills available space
+            ...(isCompact && hasNavigator && !hasSelectedContent ? { flex: '1 1 auto' } : {}),
             borderTopLeftRadius: RADIUS_INNER,
             borderBottomLeftRadius: !hasSidebar ? RADIUS_EDGE : RADIUS_INNER,
             borderTopRightRadius: RADIUS_INNER,
             borderBottomRightRadius: RADIUS_INNER,
           }}
         >
-          <div className="h-full" style={{ width: navigatorWidth }}>
+          <div className="h-full" style={{ width: isCompact && hasNavigator && !hasSelectedContent ? '100%' : navigatorWidth }}>
             {navigatorSlot}
           </div>
         </motion.div>
 
         {/* === CONTENT PANELS WITH SASHES === */}
-        {contentPanels.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center" />
+        {visiblePanels.length === 0 ? (
+          // Only show empty placeholder when not in compact mode (compact shows navigator instead)
+          isCompact ? null : <div className="flex-1 flex items-center justify-center" />
         ) : (
-          contentPanels.map((entry, index) => (
+          visiblePanels.map((entry, index) => (
             <PanelSlot
               key={entry.id}
               entry={entry}
-              isOnly={contentPanels.length === 1}
+              isOnly={visiblePanels.length === 1}
               isFocusedPanel={isMultiPanel ? entry.id === focusedPanelId : true}
               isSidebarAndNavigatorHidden={isSidebarAndNavigatorHidden}
               isAtLeftEdge={index === 0 && isLeftEdge}
-              isAtRightEdge={index === contentPanels.length - 1 && !isRightSidebarVisible}
+              isAtRightEdge={index === visiblePanels.length - 1 && !isRightSidebarVisible}
               proportion={entry.proportion}
               isMobile={isMobile}
+              isCompact={isCompact}
               sash={index > 0 ? (
                 <PanelResizeSash
                   leftIndex={index - 1}

@@ -212,6 +212,14 @@ export interface CoreBackendConfig {
   getRecoveryMessages?: () => RecoveryMessage[];
 
   /**
+   * Get ALL parent messages for branch fork fallback (not limited to 6).
+   * Called when SDK-level branch fork fails and we need to summarize
+   * the parent conversation for context injection via mini completion.
+   * Returns empty array for non-branched sessions.
+   */
+  getBranchFallbackMessages?: () => RecoveryMessage[];
+
+  /**
    * Callback to get branch seed messages (up to branch cutoff) for first turn in seeded branch mode.
    * When provided and non-empty, BaseAgent injects a hidden context block before the first user turn.
    */
@@ -220,6 +228,12 @@ export interface CoreBackendConfig {
   /** Callback invoked after branch seed context has been injected. */
   markBranchSeedApplied?: () => void;
 
+  /** One-shot hidden summary to inject on the first turn of a transferred session. */
+  getTransferredSessionSummary?: () => string | null;
+
+  /** Callback invoked after transferred session summary has been injected. */
+  markTransferredSessionSummaryApplied?: () => void;
+
   /**
    * Optional callback to resize an oversized image for API compatibility.
    * Called from PreToolUse when Read targets an image exceeding the base64 size limit.
@@ -227,6 +241,9 @@ export interface CoreBackendConfig {
    * Provided by the host app (Electron uses nativeImage, server could use sharp, etc.).
    */
   onImageResize?: (filePath: string, maxSizeBytes: number) => Promise<string | null>;
+
+  /** Enable 1M context window for Opus 4.6. Default: true. Set false to use 200K and conserve usage limits. */
+  enable1MContext?: boolean;
 
   /**
    * Pre-computed source configurations for initial setup.

@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 import { useMenuComponents } from '@/components/ui/menu-context'
 import { getFileManagerName } from '@/lib/platform'
-import { useIsRemote } from '@/hooks/useIsRemote'
 
 export interface SkillMenuProps {
   /** Skill slug */
@@ -32,7 +31,10 @@ export interface SkillMenuProps {
   /** Callbacks */
   onOpenInNewWindow: () => void
   onShowInFinder: () => void
-  onDelete: () => void
+  onDelete?: () => void
+  canShowInFinder?: boolean
+  canDelete?: boolean
+  deleteLabel?: string
 }
 
 /**
@@ -45,10 +47,12 @@ export function SkillMenu({
   onOpenInNewWindow,
   onShowInFinder,
   onDelete,
+  canShowInFinder = true,
+  canDelete = true,
+  deleteLabel = 'Delete Skill',
 }: SkillMenuProps) {
   // Get menu components from context (works with both DropdownMenu and ContextMenu)
   const { MenuItem, Separator } = useMenuComponents()
-  const isRemote = useIsRemote()
 
   return (
     <>
@@ -58,20 +62,18 @@ export function SkillMenu({
         <span className="flex-1">Open in New Window</span>
       </MenuItem>
 
-      {/* Show in file manager — hidden in remote mode */}
-      {!isRemote && (
-        <MenuItem onClick={onShowInFinder}>
-          <FolderOpen className="h-3.5 w-3.5" />
-          <span className="flex-1">{`Show in ${getFileManagerName()}`}</span>
-        </MenuItem>
-      )}
+      {/* Show in file manager */}
+      <MenuItem onClick={onShowInFinder} disabled={!canShowInFinder}>
+        <FolderOpen className="h-3.5 w-3.5" />
+        <span className="flex-1">{`Show in ${getFileManagerName()}`}</span>
+      </MenuItem>
 
       <Separator />
 
       {/* Delete */}
-      <MenuItem onClick={onDelete} variant="destructive">
+      <MenuItem onClick={canDelete ? onDelete : undefined} variant="destructive" disabled={!canDelete}>
         <Trash2 className="h-3.5 w-3.5" />
-        <span className="flex-1">Delete Skill</span>
+        <span className="flex-1">{deleteLabel}</span>
       </MenuItem>
     </>
   )

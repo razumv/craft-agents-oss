@@ -18,8 +18,6 @@ import { Icon_Home, Icon_Folder, Spinner } from '@craft-agent/ui'
 import * as storage from '@/lib/local-storage'
 import { useDirectoryPicker } from '@/hooks/useDirectoryPicker'
 import { ServerDirectoryBrowser } from '@/components/ServerDirectoryBrowser'
-import { extractWorkspaceSlugFromPath } from '@craft-agent/shared/utils/workspace-slug'
-
 import { Button } from '@/components/ui/button'
 import {
   InlineSlashCommand,
@@ -400,12 +398,12 @@ export function FreeFormInput({
     return appShellCtx.workspaces.find(w => w.id === workspaceId)?.rootPath ?? null
   }, [appShellCtx, workspaceId])
 
-  // Compute workspace slug from rootPath for SDK skill qualification
+  // Workspace slug for SDK skill qualification (server-computed)
   // SDK expects "workspaceSlug:skillSlug" format, NOT UUID
   const workspaceSlug = React.useMemo(() => {
-    if (!workspaceRootPath) return workspaceId // Fallback to ID if no path
-    return extractWorkspaceSlugFromPath(workspaceRootPath, workspaceId ?? '')
-  }, [workspaceRootPath, workspaceId])
+    if (!appShellCtx || !workspaceId) return workspaceId
+    return appShellCtx.workspaces.find(w => w.id === workspaceId)?.slug ?? workspaceId
+  }, [appShellCtx, workspaceId])
 
   // Read panel focus state from context (for multi-panel unfocused styling)
   const appShellContext = useOptionalAppShellContext()
@@ -1241,9 +1239,15 @@ export function FreeFormInput({
       const reader = new FileReader()
       reader.onload = async () => {
         const result = reader.result as ArrayBuffer
-        const base64 = btoa(
-          new Uint8Array(result).reduce((data, byte) => data + String.fromCharCode(byte), '')
-        )
+        // Chunked base64 encoding — btoa + reduce fails on large files (>1MB)
+        // due to O(n²) string concatenation and browser string-length limits
+        const bytes = new Uint8Array(result)
+        let binary = ''
+        const chunkSize = 8192
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)))
+        }
+        const base64 = btoa(binary)
 
         let type: FileAttachment['type'] = 'unknown'
         const fileName = overrideName || file.name
@@ -1973,7 +1977,7 @@ export function FreeFormInput({
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex items-center h-7 px-1.5 gap-0.5 text-[13px] shrink-0 rounded-[6px] hover:bg-foreground/5 transition-colors select-none",
+                      "input-toolbar-btn inline-flex items-center h-7 px-1.5 gap-0.5 text-[13px] shrink-0 rounded-[6px] hover:bg-foreground/5 transition-colors select-none",
                       modelDropdownOpen && "bg-foreground/5",
                       connectionUnavailable && "text-destructive",
                     )}
@@ -2274,7 +2278,7 @@ Model
               type="button"
               size="icon"
               variant="secondary"
-              className={cn("rounded-full shrink-0 hover:bg-foreground/15 active:bg-foreground/20 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
+              className={cn("send-btn rounded-full shrink-0 hover:bg-foreground/15 active:bg-foreground/20 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
               onClick={() => handleStop(false)}
             >
               <Square className={isMobile ? "h-4 w-4 fill-current" : "h-3 w-3 fill-current"} />
@@ -2283,7 +2287,7 @@ Model
             <Button
               type="submit"
               size="icon"
-              className={cn("rounded-full shrink-0 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
+              className={cn("send-btn rounded-full shrink-0 ml-2", isMobile ? "h-9 w-9" : "h-7 w-7")}
               disabled={!hasContent || disabled || disableSend}
               data-tutorial="send-button"
             >
