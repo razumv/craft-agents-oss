@@ -27,7 +27,7 @@ import type { WsRpcTlsOptions } from '@craft-agent/server-core/transport'
 import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient } from '@craft-agent/server-core/handlers/rpc'
 import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@craft-agent/server-core/sessions'
 import { initModelRefreshService, setFetcherPlatform } from '@craft-agent/server-core/model-fetchers'
-import { setSearchPlatform, setImageProcessor } from '@craft-agent/server-core/services'
+import { setSearchPlatform, setImageProcessor, HeadlessBrowserPaneManager } from '@craft-agent/server-core/services'
 import type { HandlerDeps } from '@craft-agent/server-core/handlers'
 
 process.env.CRAFT_IS_PACKAGED ??= 'false'
@@ -90,11 +90,16 @@ const instance = await (async () => {
         }
       }),
       createSessionManager: () => new SessionManager(),
-      createHandlerDeps: ({ sessionManager, platform, oauthFlowStore }) => ({
-        sessionManager,
-        platform,
-        oauthFlowStore,
-      }),
+      createHandlerDeps: ({ sessionManager, platform, oauthFlowStore }) => {
+        const browserPaneManager = new HeadlessBrowserPaneManager()
+        sessionManager.setBrowserPaneManager(browserPaneManager)
+        return {
+          sessionManager,
+          platform,
+          oauthFlowStore,
+          browserPaneManager,
+        }
+      },
       registerAllRpcHandlers: registerCoreRpcHandlers,
       setSessionEventSink: (sessionManager, sink) => {
         sessionManager.setEventSink(sink)
@@ -132,6 +137,7 @@ if (!isLocalBind && instance.protocol === 'ws') {
 
 const shutdown = async () => {
   await instance.stop()
+  // HeadlessBrowserPaneManager cleanup happens via the server stop flow
   process.exit(0)
 }
 

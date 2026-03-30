@@ -160,6 +160,9 @@ export interface IBrowserPaneManager {
 
   // -- Instance management -------------------------------------------------
 
+  /** Create a browser instance (manual or session-bound) */
+  createInstance(id?: string, options?: { show?: boolean; ownerType?: 'session' | 'manual'; ownerSessionId?: string | null }): string
+
   /** Create a browser instance for a session (optionally shown) */
   createForSession(sessionId: string, options?: { show?: boolean }): string
 
@@ -195,6 +198,8 @@ export interface IBrowserPaneManager {
   navigate(id: string, url: string): Promise<{ url: string; title: string }>
   goBack(id: string): Promise<void>
   goForward(id: string): Promise<void>
+  reload(id: string): void
+  stop(id: string): void
 
   // -- Interaction ---------------------------------------------------------
 
@@ -225,4 +230,10 @@ export interface IBrowserPaneManager {
   waitFor(id: string, args: BrowserWaitArgs): Promise<BrowserWaitResult>
   getDownloads(id: string, options?: BrowserDownloadOptions): Promise<BrowserDownloadEntry[]>
   detectSecurityChallenge(id: string): Promise<{ detected: boolean; provider: string; signals: string[] }>
+
+  // -- Events ---------------------------------------------------------------
+
+  onStateChange(cb: (info: BrowserInstanceInfo) => void): void
+  onRemoved(cb: (id: string) => void): void
+  onInteracted(cb: (id: string) => void): void
 }

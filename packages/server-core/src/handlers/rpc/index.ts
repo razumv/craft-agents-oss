@@ -17,6 +17,7 @@ import { registerStatusesHandlers } from './statuses'
 import { registerSystemCoreHandlers } from './system'
 import { registerVoiceHandlers } from './voice'
 import { registerWorkspaceCoreHandlers } from './workspace'
+import { registerBrowserHandlers } from './browser'
 
 export function registerCoreRpcHandlers(server: RpcServer, deps: HandlerDeps): void {
   registerAuthHandlers(server, deps)
@@ -34,4 +35,5 @@ export function registerCoreRpcHandlers(server: RpcServer, deps: HandlerDeps): v
   registerSystemCoreHandlers(server, deps)
   registerVoiceHandlers(server, deps)
   registerWorkspaceCoreHandlers(server, deps)
+  registerBrowserHandlers(server, deps)
 }

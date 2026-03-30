@@ -27,6 +27,7 @@ export default defineConfig({
     cfAsyncOff(),
   ],
   root: resolve(__dirname, 'src'),
+  publicDir: resolve(__dirname, 'src/public'),
   base: './',
   build: {
     outDir: resolve(__dirname, 'dist'),

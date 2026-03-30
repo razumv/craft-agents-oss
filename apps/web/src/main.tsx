@@ -27,21 +27,74 @@ import './index.css'
 const { connected: initiallyConnected } = initializeWebClient()
 
 // Expose build version for debugging and cache verification
-;(window as any).__CRAFT_BUILD__ = '20260319-v8'
+;(window as any).__CRAFT_BUILD__ = '20260319-v9'
 
-// iOS PWA keyboard dismiss fix: when the virtual keyboard closes,
-// the page may remain scrolled, leaving an empty gap at the bottom.
-// Snap back to top whenever the viewport height increases (keyboard closing).
+// Register Service Worker for PWA notifications (iOS lock-screen + notification center)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {
+    // SW registration failed — notifications will fall back to new Notification()
+  })
+}
+
+// iOS PWA dynamic viewport height.
+// In standalone PWA mode, 100dvh does NOT shrink when the keyboard opens —
+// the keyboard simply overlays on top. We fix this by tracking
+// visualViewport.height and setting a CSS variable --app-height on #root,
+// so the layout actually shrinks to fit above the keyboard.
+// Track full viewport height (without keyboard) for keyboard detection.
+// Use screen.height as the ultimate truth for PWA standalone full height.
+const fullHeight = window.screen?.height ?? window.innerHeight
+let keyboardWasOpen = false
+
+function updateAppHeight() {
+  const h = window.visualViewport?.height ?? window.innerHeight
+  const keyboardOpen = (fullHeight - h) > 100
+
+  if (keyboardOpen) {
+    // Keyboard is open — shrink layout to fit above keyboard
+    document.documentElement.style.setProperty('--app-height', `${h}px`)
+    keyboardWasOpen = true
+  } else if (keyboardWasOpen) {
+    // Keyboard just closed — force full height.
+    // visualViewport.height may report a stale (smaller) value,
+    // so use innerHeight which reflects the actual viewport.
+    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
+    keyboardWasOpen = false
+    // Also snap scroll position and retry after iOS settles
+    window.scrollTo(0, 0)
+    setTimeout(() => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
+      window.scrollTo(0, 0)
+    }, 100)
+    setTimeout(() => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
+      window.scrollTo(0, 0)
+    }, 300)
+  }
+
+  document.documentElement.classList.toggle('keyboard-open', keyboardOpen)
+  window.scrollTo(0, 0)
+}
+
+// Also listen for focus/blur on inputs to detect keyboard dismiss
+document.addEventListener('focusout', () => {
+  // Input lost focus — keyboard likely closing
+  setTimeout(() => {
+    document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
+    window.scrollTo(0, 0)
+  }, 100)
+})
+
+updateAppHeight()
 if (window.visualViewport) {
-  let prevHeight = window.visualViewport.height
-  window.visualViewport.addEventListener('resize', () => {
-    const currentHeight = window.visualViewport!.height
-    if (currentHeight > prevHeight) {
-      // Keyboard closing — snap page back
+  window.visualViewport.addEventListener('resize', updateAppHeight)
+  window.visualViewport.addEventListener('scroll', () => {
+    if (window.visualViewport!.offsetTop > 0) {
       window.scrollTo(0, 0)
     }
-    prevHeight = currentHeight
   })
+} else {
+  window.addEventListener('resize', updateAppHeight)
 }
 
 /**

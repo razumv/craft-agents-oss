@@ -104,7 +104,7 @@
     },
     "apps/cli": {
       "name": "@craft-agent/cli",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "bin": {
         "craft-cli": "src/index.ts",
       },
@@ -120,7 +120,7 @@
     },
     "apps/electron": {
       "name": "@craft-agent/electron",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
         "@craft-agent/server-core": "workspace:*",
@@ -164,7 +164,7 @@
     },
     "apps/viewer": {
       "name": "@craft-agent/viewer",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
         "@craft-agent/ui": "workspace:*",
@@ -201,7 +201,7 @@
     },
     "packages/core": {
       "name": "@craft-agent/core",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "devDependencies": {
         "@types/uuid": "^11.0.0",
       },
@@ -212,7 +212,7 @@
     },
     "packages/pi-agent-server": {
       "name": "@craft-agent/pi-agent-server",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "bin": {
         "pi-agent-server": "./dist/index.js",
       },
@@ -232,7 +232,7 @@
     },
     "packages/server": {
       "name": "@craft-agent/server",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "bin": {
         "craft-server": "src/index.ts",
       },
@@ -248,11 +248,12 @@
     },
     "packages/server-core": {
       "name": "@craft-agent/server-core",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
         "@craft-agent/shared": "workspace:*",
         "@mariozechner/pi-ai": "0.56.2",
+        "playwright": "^1.58.2",
         "sharp": "0.34.5",
         "ws": "^8.19.0",
       },
@@ -263,7 +264,7 @@
     },
     "packages/session-mcp-server": {
       "name": "@craft-agent/session-mcp-server",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "bin": {
         "session-mcp-server": "./dist/index.js",
       },
@@ -279,7 +280,7 @@
     },
     "packages/session-tools-core": {
       "name": "@craft-agent/session-tools-core",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "beautiful-mermaid": "*",
         "gray-matter": "^4.0.3",
@@ -292,7 +293,7 @@
     },
     "packages/shared": {
       "name": "@craft-agent/shared",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
         "@craft-agent/session-tools-core": "workspace:*",
@@ -318,7 +319,7 @@
     },
     "packages/ui": {
       "name": "@craft-agent/ui",
-      "version": "0.7.8",
+      "version": "0.7.10",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
         "@paper-design/shaders-react": "^0.0.69",
@@ -2801,6 +2802,10 @@
 
     "pkce-challenge": ["pkce-challenge@5.0.1", "", {}, "sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ=="],
 
+    "playwright": ["playwright@1.58.2", "", { "dependencies": { "playwright-core": "1.58.2" }, "optionalDependencies": { "fsevents": "2.3.2" }, "bin": { "playwright": "cli.js" } }, "sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A=="],
+
+    "playwright-core": ["playwright-core@1.58.2", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg=="],
+
     "plist": ["plist@3.1.0", "", { "dependencies": { "@xmldom/xmldom": "^0.8.8", "base64-js": "^1.5.1", "xmlbuilder": "^15.1.1" } }, "sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ=="],
 
     "possible-typed-array-names": ["possible-typed-array-names@1.1.0", "", {}, "sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg=="],
@@ -3814,6 +3819,8 @@
     "path-scurry/lru-cache": ["lru-cache@11.2.4", "", {}, "sha512-B5Y16Jr9LB9dHVkh6ZevG+vAbOsNOYCX+sXvFWFu7B3Iz5mijW3zdbMyhsh8ANd2mSWBYdJgnqi+mL7/LrOPYg=="],
 
     "pdf-parse-tt-message-gone/debug": ["debug@3.2.7", "", { "dependencies": { "ms": "^2.1.1" } }, "sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ=="],
+
+    "playwright/fsevents": ["fsevents@2.3.2", "", { "os": "darwin" }, "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="],
 
     "postject/commander": ["commander@9.5.0", "", {}, "sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ=="],
 

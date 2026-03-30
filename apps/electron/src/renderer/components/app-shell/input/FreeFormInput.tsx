@@ -55,7 +55,7 @@ import {
 } from '@/components/ui/styled-dropdown'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { isMac, PATH_SEP, getPathBasename } from '@/lib/platform'
+import { isMac, isWeb, PATH_SEP, getPathBasename } from '@/lib/platform'
 import { applySmartTypography } from '@/lib/smart-typography'
 import { AttachmentPreview } from '../AttachmentPreview'
 import { ANTHROPIC_MODELS, getModelShortName, getModelDisplayName, getModelContextWindow, type ModelDefinition } from '@config/models'
@@ -1835,7 +1835,10 @@ export function FreeFormInput({
             sessionId={sessionId}
           />
 
-          <div className={cn("flex items-center gap-1 py-2", isMobile ? "px-2 pb-[max(8px,env(safe-area-inset-bottom))]" : "px-2", !compactMode && "border-t border-border/50")}>
+          <div
+            className={cn("flex items-center gap-1 py-2", isMobile ? "px-2" : "px-2", !compactMode && "border-t border-border/50")}
+            style={isMobile && isWeb ? { paddingBottom: 4 } : isMobile ? { paddingBottom: 'max(8px, env(safe-area-inset-bottom))' } : undefined}
+          >
           {/* Left side: Context badges - shrinkable so model + send always stay visible */}
           {/* Hidden in compact mode (EditPopover embedding) */}
           {!compactMode && (

@@ -323,7 +323,9 @@ export function initializeWebClient(): { connected: boolean } {
   }
   ;(api as any).onNotificationNavigate = () => () => {}
 
-  // Notifications — use browser Notification API
+  // Notifications — use ServiceWorker showNotification for iOS PWA support.
+  // Plain `new Notification()` does NOT work in iOS standalone PWAs;
+  // `registration.showNotification()` is required for lock-screen / notification center.
   ;(api as any).showNotification = async (
     title: string,
     body: string,
@@ -331,11 +333,29 @@ export function initializeWebClient(): { connected: boolean } {
     _sessionId: string,
   ) => {
     if (Notification.permission === 'granted') {
-      new Notification(title, { body })
+      try {
+        const reg = await navigator.serviceWorker?.ready
+        if (reg) {
+          await reg.showNotification(title, { body, icon: '/icon-192.png' })
+        } else {
+          new Notification(title, { body })
+        }
+      } catch {
+        new Notification(title, { body })
+      }
     } else if (Notification.permission !== 'denied') {
       const permission = await Notification.requestPermission()
       if (permission === 'granted') {
-        new Notification(title, { body })
+        try {
+          const reg = await navigator.serviceWorker?.ready
+          if (reg) {
+            await reg.showNotification(title, { body, icon: '/icon-192.png' })
+          } else {
+            new Notification(title, { body })
+          }
+        } catch {
+          new Notification(title, { body })
+        }
       }
     }
   }

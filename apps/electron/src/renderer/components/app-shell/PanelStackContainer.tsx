@@ -171,7 +171,7 @@ export function PanelStackContainer({
           initial={false}
           animate={{
             width: hasSidebar ? sidebarWidth : 0,
-            marginRight: hasSidebar ? 0 : -PANEL_GAP,
+            marginRight: hasSidebar ? 0 : (isMobile ? 0 : -PANEL_GAP),
             opacity: hasSidebar ? 1 : 0,
           }}
           transition={transition}
@@ -188,7 +188,7 @@ export function PanelStackContainer({
           initial={false}
           animate={{
             width: hasNavigator ? navigatorWidth : 0,
-            marginRight: hasNavigator ? 0 : -PANEL_GAP,
+            marginRight: hasNavigator ? 0 : (isMobile ? 0 : -PANEL_GAP),
             opacity: hasNavigator ? 1 : 0,
           }}
           transition={transition}

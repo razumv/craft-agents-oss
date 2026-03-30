@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { CHAT_LAYOUT } from '@/config/layout'
+import { isWeb } from '@/lib/platform'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { flattenLabels, type LabelConfig } from '@craft-agent/shared/labels'
 import type { PermissionMode } from '@craft-agent/shared/agent/modes'
 import type { SessionStatus } from '@/config/session-status-config'
@@ -49,6 +51,9 @@ export function ChatInputZone({
 }: ChatInputZoneProps) {
   const [autoOpenLabelId, setAutoOpenLabelId] = React.useState<string | null>(null)
   const shouldShowOptionBadges = showOptionBadges ?? !compactMode
+  const isMobile = useIsMobile()
+  // On mobile web, remove pb-4 — the toolbar handles safe-area padding
+  const mobileWebBottom = isMobile && isWeb
 
   const handleLabelAdd = React.useCallback((labelId: string) => {
     const current = sessionLabels || []
@@ -63,7 +68,7 @@ export function ChatInputZone({
   }, [labels, onLabelsChange, sessionLabels])
 
   return (
-    <div className={cn(CHAT_LAYOUT.maxWidth, 'mx-auto w-full px-4 mt-1 pb-4', className)}>
+    <div className={cn(CHAT_LAYOUT.maxWidth, 'mx-auto w-full px-4 mt-1', mobileWebBottom ? 'pb-0' : 'pb-4', className)}>
       {shouldShowOptionBadges && (
         <ActiveOptionBadges
           permissionMode={permissionMode}

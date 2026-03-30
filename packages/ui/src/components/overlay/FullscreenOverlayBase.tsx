@@ -30,7 +30,7 @@
  * Used by: PreviewOverlay, DocumentFormattedMarkdownOverlay, WorkspaceCreationScreen
  */
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useCallback, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { usePlatform } from '../../context/PlatformContext'
 import { cn } from '../../lib/utils'
@@ -136,6 +136,38 @@ export function FullscreenOverlayBase({
     return () => onSetTrafficLightsVisible?.(true)
   }, [isOpen, onSetTrafficLightsVisible])
 
+  // Swipe-to-close gesture: swipe right (→) or down (↓) to dismiss overlay.
+  // Tracks touch start/end positions and closes if horizontal delta > 80px
+  // or vertical delta > 120px in the correct direction.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    if (touch) {
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const touch = e.changedTouches[0]
+    if (!touch) return
+
+    const deltaX = touch.clientX - touchStartRef.current.x
+    const deltaY = touch.clientY - touchStartRef.current.y
+
+    // Swipe right to close (deltaX > 80px, and mostly horizontal)
+    if (deltaX > 80 && Math.abs(deltaY) < deltaX) {
+      onClose()
+    }
+    // Swipe down to close (deltaY > 120px, and mostly vertical)
+    if (deltaY > 120 && Math.abs(deltaX) < deltaY) {
+      onClose()
+    }
+
+    touchStartRef.current = null
+  }, [onClose])
+
   // Content padding clears the floating header at rest (when present).
   // Without a header, just the fade zone inset.
   const contentPaddingTop = hasHeader ? HEADER_HEIGHT + FADE_SIZE : FADE_SIZE
@@ -151,6 +183,8 @@ export function FullscreenOverlayBase({
           )}
           style={{ zIndex: Z_FULLSCREEN }}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
           onEscapeKeyDown={(event) => {
             const handled = handleFullscreenEscapeWithStack()
             if (!handled) return

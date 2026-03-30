@@ -40,11 +40,20 @@ body {
 /* PWA standalone: use dynamic viewport height for proper fullscreen fill.
    100dvh accounts for iOS dynamic toolbar / home indicator correctly.
    Falls back to 100vh for older browsers. */
-html, body, #root {
+html, body {
   height: 100vh;
   height: 100dvh;
   width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+/* #root uses a CSS variable --app-height set by JS via visualViewport.
+   This ensures the layout shrinks when the iOS keyboard opens,
+   instead of the keyboard overlaying on top of content. */
+#root {
+  height: var(--app-height, 100dvh);
+  width: 100%;
+  overflow: hidden;
 }
 
 /* =============================================================================
@@ -103,7 +112,9 @@ html {
   padding-left: env(safe-area-inset-left, 0px);
 }
 
-/* Landscape safe areas — Dynamic Island creates left/right insets */
+/* Safe areas — Dynamic Island (left/right).
+   Bottom safe area is handled by the input toolbar itself (its background
+   fills the home indicator area), NOT by a shell-level padding. */
 .mobile-web-shell {
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
@@ -195,6 +206,8 @@ html {
   }
   ::-webkit-scrollbar {
     display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   /* === CHAT MESSAGE SPACING === */
@@ -212,6 +225,21 @@ html {
   [data-session-item] {
     min-height: 44px;
   }
+
+  /* === FULLSCREEN OVERLAY: touch fixes for iOS ===
+     Radix Dialog portals can have touch issues on iOS WebKit.
+     Ensure touch-action works and close button is tappable. */
+  [data-radix-dialog-content] {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  /* Larger close button touch target (44px min for iOS HIG) */
+  .fullscreen-overlay-background button[title="Close (Esc)"] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 10px !important;
+  }
+
 }
 
 /* =============================================================================
